@@ -11,7 +11,7 @@ TEMPLATE = {}
 -- use dofile or addLuaScript to call the modchart template in order to write mods
 -- use psych engine 0.7 or higher version
 -- because of some reasons, i can't add some offsets and periods
--- <--Warning: DO NOT CHANGE ALL THE FUNCTIONS-->
+-- <--Warning: DO NOT CHANGE ALL THE FUNCTIONS EXCEPT run()-->
 
 -- EASING EQUATIONS
 
@@ -452,6 +452,7 @@ modList = {
 	waveperiod = 0,
 	brake = 0,
 	boost = 0,
+	boomerang = 0,
 	hidden = 0,
 	hiddenoffset = 0,
 	alternate = 0,
@@ -643,6 +644,9 @@ function getYAdjust(fYOffset, iCol, pn)
 		fAccelYAdjust = math.clamp( fAccelYAdjust, -400, 400 )
 		yadj = yadj+fAccelYAdjust;
 	
+	end
+	if m.boomerang ~= 0 then
+		yadj = ((-1*fYOffset*fYOffset/500) + 1.5*fYOffset)*m.boomerang
 	end
 	fYOffset = fYOffset+yadj
 	
@@ -1089,6 +1093,7 @@ function run()
 	set{0,32,'drawsize'}
 	
 	if not disable then
+		--me{0,1,outCubic,0.5,'boomerang'}
 		me{0,4,outCubic,2,'tipsy',pn=1}
 		me{12,4,inCubic,1,'tipsy',pn=1}
 		
