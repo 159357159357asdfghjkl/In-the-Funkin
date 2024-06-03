@@ -4,11 +4,14 @@ TEMPLATE = {}
 
 -- Taro's janky "TEMPLATE 1" implementation for FNF
 -- shoutouts to Kade for letting me do this
--- psyched by a invisible man
--- it's a 2D modchart system so this makes it don't support zIndex
+
+-- PSYCH IMPROVED VERSION [README]
+-- you can also call it "mirinmania" lol
+-- it's a 2D modchart system so it don't support zIndex
 -- use dofile or addLuaScript to call the modchart template in order to write mods
 -- use psych engine 0.7 or higher version
--- DO NOT CHANGE ALL THE FUNCTIONS
+-- because of some reasons, i can't add some offsets and periods
+-- <--Warning: DO NOT CHANGE ALL THE FUNCTIONS-->
 
 -- EASING EQUATIONS
 
@@ -446,7 +449,9 @@ modList = {
 	confusion = 0,
 	dizzy = 0,
 	wave = 0,
+	waveperiod = 0,
 	brake = 0,
+	boost = 0,
 	hidden = 0,
 	hiddenoffset = 0,
 	alternate = 0,
@@ -456,7 +461,6 @@ modList = {
 	camwag = 0,
 	xmod = 1, --scrollSpeed
     cmod = -1,
-	drawsize = 10 --beatcutoff
 }
 
 --column specific mods
@@ -583,7 +587,7 @@ function getReverseForCol(iCol,pn)
 	
 	return val
 end
-
+--[[
 function getYAdjust(fYOffset, iCol, pn)
 	
 	local m = activeMods[pn]
@@ -605,6 +609,41 @@ function getYAdjust(fYOffset, iCol, pn)
 	
 	end
 	
+	fYOffset = fYOffset+yadj
+	
+	return fYOffset
+end]]
+
+function getYAdjust(fYOffset, iCol, pn)
+	
+	local m = activeMods[pn]
+	
+	local yadj = 0
+	if m.wave ~= 0 then
+		yadj = yadj + m.wave * 20*math.sin( (fYOffset+250)/76 )
+	end
+	
+	if m.brake ~= 0 then
+
+		local fEffectHeight = 500;
+		local fScale = scale( fYOffset, 0, fEffectHeight, 0, 1 )
+		local fNewYOffset = fYOffset * fScale; 
+		local fBrakeYAdjust = m.brake * (fNewYOffset - fYOffset)
+		
+		fBrakeYAdjust = math.clamp( fBrakeYAdjust, -400, 400 )
+		yadj = yadj+fBrakeYAdjust;
+	
+	end
+	if m.boost ~= 0 then
+
+		local fEffectHeight = 500;
+		local fNewYOffset = fYOffset * 1.5 / ((fYOffset+fEffectHeight/1.2)/fEffectHeight); 
+		local fAccelYAdjust = m.boost * (fNewYOffset - fYOffset)
+		
+		fAccelYAdjust = math.clamp( fAccelYAdjust, -400, 400 )
+		yadj = yadj+fAccelYAdjust;
+	
+	end
 	fYOffset = fYOffset+yadj
 	
 	return fYOffset
@@ -780,7 +819,6 @@ end
 
 function TEMPLATE.update(elapsed)
     beat = (getSongPosition() / 1000) * (curBpm/60)
-    beatcutoff = activeMods[1].drawsize
 	
 	--------------------------------------------------------------
 	-- modified version of exschwasion's template 1 ease reader
@@ -979,8 +1017,6 @@ function onCreatePost()
 	
 end
 function run()
-	if songName == 'detected' then --example
-	-------START-------
 	local disable = false
 	
 	local ALLOW_REVERSE = true
@@ -992,6 +1028,8 @@ function run()
 		return 1
 	end
 	end
+
+
 	
 	--some basic helpers
 	function hide(t)
@@ -1051,8 +1089,6 @@ function run()
 	set{0,32,'drawsize'}
 	
 	if not disable then
-		me{0,2,inCirc,1,'dizzy'}
-		me{0,2,inOutQuad,1,'camwag'}
 		me{0,4,outCubic,2,'tipsy',pn=1}
 		me{12,4,inCubic,1,'tipsy',pn=1}
 		
@@ -1712,11 +1748,12 @@ function run()
 			
 		end}
 		
-			me{484-fwo2,4,inCubic,750,'amovey'}
-
-		end
+		me{484-fwo2,4,inCubic,750,'amovey'}
+		
+		
+		
+		
 	end
-	-------END-------
 end
 function onSongStart()
     
