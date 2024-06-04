@@ -11,6 +11,12 @@ TEMPLATE = {}
 -- use dofile or addLuaScript to call the modchart template in order to write mods
 -- use psych engine 0.7 or higher version
 -- because of some reasons, i can't add some offsets and periods
+-- don't support path mods
+-- <<<<<
+-- if you want to try other mods, download my alt stuff:
+-- https://github.com/159357159357asdfghjkl/troll-engine-but-more-modifiers-and-shit-freeplay
+-- based on troll engine
+-- >>>>>
 -- <--Warning: DO NOT CHANGE ALL THE FUNCTIONS EXCEPT run()-->
 
 -- EASING EQUATIONS
@@ -455,6 +461,8 @@ modList = {
 	boomerang = 0,
 	hidden = 0,
 	hiddenoffset = 0,
+	sudden = 0,
+	suddenoffset = 0,
 	alternate = 0,
 	camx = 0,
 	camy = 0,
@@ -571,6 +579,14 @@ function arrowAlpha(fYOffset, iCol,pn)
 			alp = alp*(1-hmult)*m.hidden
 		elseif fYOffset < m.hiddenoffset-100 then
 			alp = alp*(1-m.hidden)
+		end
+	end
+	if m.sudden ~= 0 then
+		if fYOffset > m.suddenoffset and fYOffset <= m.suddenoffset+200 then
+			local hmult = -(fYOffset-m.suddenoffset)/200
+			alp = alp*(1-hmult)*m.sudden
+		elseif fYOffset > m.suddenoffset+100 then
+			alp = alp*(1-m.sudden)
 		end
 	end
 	return alp
@@ -748,7 +764,7 @@ function arrowEffects(fYOffset, iCol, pn)
 		end
 	
 	end
-	
+
     return xpos, ypos, rotz
     
 end
@@ -767,33 +783,31 @@ perframe = {}
 event,curevent = {},1
 songStarted = false
 
-function ease(t)
-	table.insert(mods,t)
+--make it functional, you can also choose the table ver
+function modease(beat,length,ease,val,modname,playernum,plrs,startval,timin,ex1s,ex2s)
+	me{beat,length,ease,startVal=val,modname,pn=playernum,timing=timin,plr=plrs,ex1=ex1s,ex2=ex2s}
 end
+function setvalue(beat,val,name,playernum)
+	set{beat,val,name,playernum}
+end
+function modperframe(starts,ends,func)
+	mpf{starts,ends,func}
+end
+function callbackevent(startbeat,func,idk)
+	m2{startbeat,func,idk}
+end
+--
 
 function set(t)
 	table.insert(mods,{t[1],0,linear,t[2],t[3],pn=t.pn})
 end
-
-function callback(t)
-	table.insert(event,t)
-end
-
-
-function beats(t)
-	table.insert(perframe,t)
-end
-
 function me(t)
-    --deprecated function, aka ease
 	table.insert(mods,t)
 end
 function mpf(t)
-    --deprecated aka beats
 	table.insert(perframe,t)
 end
 function m2(t)
-	--deprecated aka callback
 	table.insert(event,t)
 end
 
@@ -1093,7 +1107,6 @@ function run()
 	set{0,32,'drawsize'}
 	
 	if not disable then
-		--me{0,1,outCubic,0.5,'boomerang'}
 		me{0,4,outCubic,2,'tipsy',pn=1}
 		me{12,4,inCubic,1,'tipsy',pn=1}
 		
