@@ -496,6 +496,7 @@ modList = {
 	reverse = 0,
 	split = 0,
 	cross = 0,
+	centered = 0,
 	dark = 0,
 	stealth = 0,
 	alpha = 1,
@@ -647,7 +648,8 @@ function getReverseForCol(iCol,pn)
 	if m.split ~= 0 and iCol > 1 then val = val+m.split end
 	if m.cross ~= 0 and iCol == 1 or iCol == 2 then val = val+m.cross end
 	if m.alternate ~= 0 and iCol % 2 == 1 then val = val+m.alternate end
-	
+	if m.centered ~= 0 then val = scale( m.centered, 0, 1, val, 0 ) end
+
 	return val
 end
 
@@ -730,7 +732,7 @@ function arrowEffects(fYOffset, iCol, pn)
 		ypos = ypos + m['amovey'..iCol] + m.amovey
 	end
 	
-	if m['reverse'..iCol] ~= 0 or m.reverse ~= 0 or m.split ~= 0 or m.cross ~= 0 or m.alternate ~= 0 then
+	if m['reverse'..iCol] ~= 0 or m.reverse ~= 0 or m.split ~= 0 or m.cross ~= 0 or m.alternate ~= 0 or m.centered ~= 0 then
 		ypos = ypos + getReverseForCol(iCol,pn) * 450
 	end
 	
@@ -1212,7 +1214,6 @@ function run()
 	set{0,32,'drawsize'}
 	
 	if not disable then
-		me{0,1,outCubic,2,'zigzag'}
 		me{0,4,outCubic,2,'tipsy',pn=1}
 		me{12,4,inCubic,1,'tipsy',pn=1}
 		
