@@ -436,6 +436,22 @@ function square(angle)
 	return fAngle >= math.pi and -1.0 or 1.0;
 end
 
+function triangle( angle )
+	local fAngle= angle % math.pi * 2.0;
+	if fAngle < 0.0 then
+		fAngle= fAngle+math.pi * 2.0;
+	end
+	local result= fAngle * (1 / math.pi);
+	if result < .5 then
+		return result * 2.0;
+	elseif result < 1.5 then
+		return 1.0 - ((result - .5) * 2.0);
+	else
+		return -4.0 + (result * 2.0);
+	end
+	
+end
+
 ---------------------------------------------------------------------------------------
 ----------------------END DON'T TOUCH IT KIDDO-----------------------------------------
 ---------------------------------------------------------------------------------------
@@ -469,6 +485,10 @@ modList = {
 	bounceoffset = 0, --helper mod
 	bounceperiod = 0, --helper mod
 	xmode = 0,
+	tiny = 0,
+	zigzag = 0,
+	zigzagoffset = 0,
+	zigzagperiod = 0,
 	movex = 0,
 	movey = 0,
 	amovex = 0,
@@ -838,6 +858,19 @@ function arrowEffects(fYOffset, iCol, pn)
 		xpos = xpos + m.xmode * (pn == 2 and -fYOffset or fYOffset)
 	end
 
+	if m.tiny ~= 0 then
+		local fTinyPercent = m.tiny
+		fTinyPercent = math.min( math.pow(0.5, fTinyPercent), 2 );
+		xpos = xpos * fTinyPercent
+	end
+
+	if m.zigzag ~= 0 then
+		local fResult = triangle( (math.pi * (1/(m.zigzagperiod+1)) * 
+		((fYOffset+(100.0*(m.zigzagoffset)))/ARROW_SIZE) ) );
+	    
+		xpos = xpos + (m.zigzag*ARROW_SIZE/2) * fResult;
+	end
+
     return xpos, ypos, rotz
     
 end
@@ -1179,6 +1212,7 @@ function run()
 	set{0,32,'drawsize'}
 	
 	if not disable then
+		me{0,1,outCubic,2,'zigzag'}
 		me{0,4,outCubic,2,'tipsy',pn=1}
 		me{12,4,inCubic,1,'tipsy',pn=1}
 		
