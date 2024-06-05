@@ -28,6 +28,3 @@ camNotes.x=x; camNotes.y=y; camNotes.angle=a;
 createGlobalCallback('round',function(v:Float):Int{
 return Math.round(v);
 });
-createGlobalCallback('abs',function(v:Float):Float{
-return Math.abs(v);
-});

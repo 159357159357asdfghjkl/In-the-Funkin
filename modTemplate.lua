@@ -417,6 +417,10 @@ function outInBounce(t, b, c, d)
   end
 end
 
+function instant()
+	return 1
+end
+
 function scale(x, l1, h1, l2, h2)
 	return (((x) - (l1)) * ((h2) - (l2)) / ((h1) - (l1)) + (l2))
 end
@@ -500,6 +504,7 @@ modList = {
 	dark = 0,
 	stealth = 0,
 	alpha = 1,
+	randomvanish = 0,
 	confusion = 0,
 	dizzy = 0,
 	wave = 0,
@@ -635,6 +640,10 @@ function arrowAlpha(fYOffset, iCol,pn)
 		elseif fYOffset > m.suddenoffset+100 then
 			alp = alp*(1-m.sudden)
 		end
+	end
+	if m.randomvanish ~= 0 then
+		local fRealFadeDist = 80;
+		alp = alp + scale( math.abs(fYOffset-360), fRealFadeDist, 2*fRealFadeDist, -1, 0 ) * m.randomvanish;
 	end
 	return alp
 end
@@ -852,7 +861,7 @@ function arrowEffects(fYOffset, iCol, pn)
 	end
 
 	if m.bounce ~= 0 then
-		local fBounceAmt = abs( math.sin( ( (fYOffset + (1.0 * (m.bounceoffset) ) ) / ( 60 + m.bounceperiod*60) ) ) );
+		local fBounceAmt = math.abs( math.sin( ( (fYOffset + (1.0 * (m.bounceoffset) ) ) / ( 60 + m.bounceperiod*60) ) ) );
 		xpos = xpos + m.bounce * ARROW_SIZE * 0.5 * fBounceAmt;
 	end
 
@@ -1142,6 +1151,7 @@ function onCreatePost()
 	
 end
 function run()
+	if songName == 'detected' then
 	local disable = false
 	
 	local ALLOW_REVERSE = true
@@ -1527,44 +1537,7 @@ function run()
 			
 		end}
 		
-		
-		--[[
-		me{288-fwo,8,outExpo,startVal=620,448,'spacing'}
-		me{288-fwo,8,outExpo,startVal=0,224,'addx'}
-		me{288-fwo,8,outExpo,startVal=0,1,'waveamp'}
-		
-		me{316-fwo,4,inCubic,0,'addx'}
-		me{316-fwo,4,inCubic,0,'waveamp'}
-		me{316-fwo,4,inCubic,620,'spacing'}
-		
-		mpf{288-fwo,320-fwo,function(beat)
-			
-			local f = flicker()
-			if f == -1 then f = 0 end
-			
-			local scrollerpos = beat-288 
-			
-			for pn=1,2 do
-				local cpos = 0
-				if pn == 2 then cpos = -620 end
-				
-				local spacing = activeMods[pn].spacing
-				local addx = activeMods[pn].addx
-				local waveamp = activeMods[pn].waveamp
-				
-				local newpos = (spacing * (pn - 1 + f*2) + scrollerpos * spacing * 0.25)%(spacing*4) - spacing*2 + addx
-				
-				activeMods[pn].movex = cpos + newpos
-				for col = 0,3 do
-					local ang = 2*math.pi*((pn-1)*4 + col)/8
-					activeMods[pn]['reverse'..col] = waveamp * .1 * math.sin(beat*math.pi + ang)
-				end
-				
-			end
-			
-		end}
-		]]
-		
+
 		set{315.5,3,'beat'}
 		set{319.5,0,'beat'}
 		
@@ -1879,6 +1852,7 @@ function run()
 		
 		
 	end
+end
 end
 function onSongStart()
     
