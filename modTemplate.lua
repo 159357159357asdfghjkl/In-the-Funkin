@@ -456,6 +456,10 @@ function triangle( angle )
 	
 end
 
+function quantize(f,interval)
+return int((f+interval/2)/interval)*interval;
+end
+
 ---------------------------------------------------------------------------------------
 ----------------------END DON'T TOUCH IT KIDDO-----------------------------------------
 ---------------------------------------------------------------------------------------
@@ -505,6 +509,7 @@ modList = {
 	stealth = 0,
 	alpha = 1,
 	randomvanish = 0,
+	blink = 0,
 	confusion = 0,
 	dizzy = 0,
 	wave = 0,
@@ -640,6 +645,12 @@ function arrowAlpha(fYOffset, iCol,pn)
 		elseif fYOffset > m.suddenoffset+100 then
 			alp = alp*(1-m.sudden)
 		end
+	end
+	if m.blink ~= 0 then
+		local time = getSongPosition()/1000
+		local f = math.sin(time*10)
+		f=quantize(f,0.3333)
+		alp = alp + scale( f, 0, 1, -1, 0 );
 	end
 	if m.randomvanish ~= 0 then
 		local fRealFadeDist = 80;
@@ -1224,6 +1235,7 @@ function run()
 	set{0,32,'drawsize'}
 	
 	if not disable then
+		me{0,4,outCubic,1,'blink'}
 		me{0,4,outCubic,2,'tipsy',pn=1}
 		me{12,4,inCubic,1,'tipsy',pn=1}
 		
