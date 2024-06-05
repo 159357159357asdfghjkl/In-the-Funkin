@@ -21,7 +21,13 @@ function onUpdate(elapsed){
     if(game.camZooming)
         camNotes.zoom = game.camHUD.zoom;
 }
-
+//some basic helpers
 createGlobalCallback('setCamNotes',function(x:Float,y:Float,a:Float){
 camNotes.x=x; camNotes.y=y; camNotes.angle=a;
+});
+createGlobalCallback('round',function(v:Float):Int{
+return Math.round(v);
+});
+createGlobalCallback('abs',function(v:Float):Float{
+return Math.abs(v);
 });

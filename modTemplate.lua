@@ -10,8 +10,9 @@ TEMPLATE = {}
 -- it's a 2D modchart system so it don't support zIndex
 -- use dofile or addLuaScript to call the modchart template in order to write mods
 -- use psych engine 0.7 or higher version
--- because of some reasons, i can't add some offsets and periods
--- don't support path mods
+-- because of some reasons, i can't add some mods
+-- i don't want to add offsets and periods to old mods
+-- tips: if you feel uncomfortable about path mods, set other helper mods
 -- <<<<<
 -- if you want to try other mods, download my alt stuff:
 -- https://github.com/159357159357asdfghjkl/troll-engine-but-more-modifiers-and-shit-freeplay
@@ -426,6 +427,15 @@ function math.clamp(val,min,max)
 	return val
 end
 
+function square(angle)
+	local fAngle = angle % (math.pi * 2)
+		--Hack: This ensures the hold notes don't flicker right before they're hit.
+		if fAngle < 0.01 then
+		    fAngle = fAngle + math.pi * 2;
+		end
+	return fAngle >= math.pi and -1.0 or 1.0;
+end
+
 ---------------------------------------------------------------------------------------
 ----------------------END DON'T TOUCH IT KIDDO-----------------------------------------
 ---------------------------------------------------------------------------------------
@@ -442,6 +452,23 @@ modList = {
 	tipsy = 0,
 	adrunk = 0, --non conflict accent mod
 	atipsy = 0, --non conflict accent mod
+	bumpyx = 0,
+	bumpyxoffset = 0, --helper mod
+	bumpyxperiod = 0, --helper mod
+	beaty = 0,
+	sawtooth = 0,
+	sawtoothperiod = 0, --helper mod
+	digital = 0,
+	digitalsteps = 0, --helper mod
+	digitaloffset = 0, --helper mod
+	digitalperiod = 0, --helper mod
+	square = 0,
+	squareoffset = 0, --helper mod
+	squareperiod = 0, --helper mod
+	bounce = 0,
+	bounceoffset = 0, --helper mod
+	bounceperiod = 0, --helper mod
+	xmode = 0,
 	movex = 0,
 	movey = 0,
 	amovex = 0,
@@ -455,7 +482,6 @@ modList = {
 	confusion = 0,
 	dizzy = 0,
 	wave = 0,
-	waveperiod = 0,
 	brake = 0,
 	boost = 0,
 	boomerang = 0,
@@ -604,32 +630,6 @@ function getReverseForCol(iCol,pn)
 	
 	return val
 end
---[[
-function getYAdjust(fYOffset, iCol, pn)
-	
-	local m = activeMods[pn]
-	
-	local yadj = 0
-	if m.wave ~= 0 then
-		yadj = yadj + m.wave * 20*math.sin( (fYOffset+250)/76 )
-	end
-	
-	if m.brake ~= 0 then
-
-		local fEffectHeight = 500;
-		local fScale = scale( fYOffset, 0, fEffectHeight, 0, 1 )
-		local fNewYOffset = fYOffset * fScale; 
-		local fBrakeYAdjust = m.brake * (fNewYOffset - fYOffset)
-		
-		fBrakeYAdjust = math.clamp( fBrakeYAdjust, -400, 400 )
-		yadj = yadj+fBrakeYAdjust;
-	
-	end
-	
-	fYOffset = fYOffset+yadj
-	
-	return fYOffset
-end]]
 
 function getYAdjust(fYOffset, iCol, pn)
 	
@@ -651,6 +651,7 @@ function getYAdjust(fYOffset, iCol, pn)
 		yadj = yadj+fBrakeYAdjust;
 	
 	end
+
 	if m.boost ~= 0 then
 
 		local fEffectHeight = 500;
@@ -661,9 +662,11 @@ function getYAdjust(fYOffset, iCol, pn)
 		yadj = yadj+fAccelYAdjust;
 	
 	end
+
 	if m.boomerang ~= 0 then
 		yadj = ((-1*fYOffset*fYOffset/500) + 1.5*fYOffset)*m.boomerang
 	end
+
 	fYOffset = fYOffset+yadj
 	
 	return fYOffset
@@ -763,6 +766,76 @@ function arrowEffects(fYOffset, iCol, pn)
 			
 		end
 	
+	end
+
+	if m.beaty ~= 0 then
+			
+		local fBeatStrength = m.beaty;
+		
+		local fAccelTime = 0.3;
+		local fTotalTime = 0.7;
+		
+		-- If the song is really fast, slow down the rate, but speed up the
+		-- acceleration to compensate or it'll look weird.
+		fBeat = beat + fAccelTime;
+		
+		local bEvenBeat = false;
+		if math.floor(fBeat) % 2 ~= 0 then
+			bEvenBeat = true;
+		end
+		
+		fBeat = fBeat-math.floor( fBeat );
+		fBeat = fBeat+1;
+		fBeat = fBeat-math.floor( fBeat );
+		
+		if fBeat<fTotalTime then
+		
+			local fAmount = 0;
+			if fBeat < fAccelTime then
+				fAmount = scale( fBeat, 0.0, fAccelTime, 0.0, 1.0);
+				fAmount = fAmount*fAmount;
+			else 
+				--fBeat < fTotalTime
+				fAmount = scale( fBeat, fAccelTime, fTotalTime, 1.0, 0.0);
+				fAmount = 1 - (1-fAmount) * (1-fAmount);
+			end
+
+			if bEvenBeat then
+				fAmount = fAmount*-1;
+			end
+
+			local fShift = 40.0*fAmount*math.sin( ((fYOffset/30.0)) + (math.pi/2) );
+			
+			ypos = ypos + fBeatStrength * fShift
+			
+		end
+	
+	end
+
+	if m.sawtooth ~= 0 then
+		xpos = xpos + (m.sawtooth*ARROW_SIZE) * ((0.5 / (m.sawtoothperiod+1) * fYOffset) / ARROW_SIZE - math.floor((0.5 / (m.sawtoothperiod+1) * fYOffset) / ARROW_SIZE) );
+	end
+
+	if m.digital ~= 0 then
+		xpos = xpos + (m.digital * ARROW_SIZE * 0.5) * round((m.digitalsteps+1) * math.sin(math.pi * (fYOffset + (1.0 * m.digitaloffset ) ) / (ARROW_SIZE + (m.digitalperiod * ARROW_SIZE) )) )/(m.digitalsteps+1);
+	end
+
+	if m.bumpyx ~= 0 then
+		xpos = xpos + m.bumpyx * 40*math.sin((fYOffset+(100.0*m.bumpyxoffset))/((m.bumpyxperiod*16.0)+16.0));
+	end
+
+	if m.square ~= 0 then
+		local fResult = square( (math.pi * (fYOffset+(1.0*(m.squareoffset))) / (ARROW_SIZE+(m.squareperiod*ARROW_SIZE))) );
+		xpos = xpos + (m.square * ARROW_SIZE * 0.5) * fResult;
+	end
+
+	if m.bounce ~= 0 then
+		local fBounceAmt = abs( math.sin( ( (fYOffset + (1.0 * (m.bounceoffset) ) ) / ( 60 + m.bounceperiod*60) ) ) );
+		xpos = xpos + m.bounce * ARROW_SIZE * 0.5 * fBounceAmt;
+	end
+
+	if m.xmode ~= 0 then
+		xpos = xpos + m.xmode * (pn == 2 and -fYOffset or fYOffset)
 	end
 
     return xpos, ypos, rotz
@@ -876,7 +949,6 @@ function TEMPLATE.update(elapsed)
 				isTweening[pn][mn] = true
 			end
 		end
-		
 		curmod = curmod+1
 	end
 	
