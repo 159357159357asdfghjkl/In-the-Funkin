@@ -916,7 +916,7 @@ function modease(beat,length,ease,val,modname,playernum,plrs,startval,timin,ex1s
 	me{beat,length,ease,startVal=val,modname,pn=playernum,timing=timin,plr=plrs,ex1=ex1s,ex2=ex2s}
 end
 function setvalue(beat,val,name,playernum)
-	set{beat,val,name,playernum}
+	set{beat,val,name,pn=playernum}
 end
 function modperframe(starts,ends,func)
 	mpf{starts,ends,func}
@@ -1165,7 +1165,7 @@ function onCreatePost()
 	
 end
 function run()
-me{1,2,inCirc,1,'boost'} me{1,2,inCirc,1,'flip'}
+
 end
 function onSongStart()
     
