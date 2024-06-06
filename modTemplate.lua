@@ -493,7 +493,7 @@ modList = {
 	bounceoffset = 0, --helper mod
 	bounceperiod = 0, --helper mod
 	xmode = 0,
-	tiny = 0,
+	tiny = 0, -- strength multiplier i think
 	zigzag = 0,
 	zigzagoffset = 0,
 	zigzagperiod = 0,
@@ -525,8 +525,7 @@ modList = {
 	camy = 0,
 	rotationz = 0,
 	camwag = 0,
-	xmod = 1, --scrollSpeed
-    cmod = -1,
+	xmod = getProperty('SONG.speed'), --scrollSpeed
 }
 
 --column specific mods
@@ -540,7 +539,6 @@ for i=0,3 do
 	modList['confusion'..i] = 0
 	modList['reverse'..i] = 0
 	modList['xmod'..i] = 1 --column specific scrollSpeed multiplier
-    modList['cmod'..i] = -1
 end
 
 activeMods = {{},{}}
@@ -1105,18 +1103,7 @@ function TEMPLATE.update(elapsed)
 				
 				local defaultx, defaulty = defaultPositions[c+1].x, defaultPositions[c+1].y
 
-				local function getcmod()
-				local daSpeed = activeMods[pn]['cmod'..col]
-				if daSpeed < 0 then
-					daSpeed = activeMods[pn].cmod
-				end
-
-				if daSpeed < 0 then
-					daSpeed = getProperty('SONG.speed')
-				end
-					return daSpeed;
-				end
-				local scrollSpeed = xmod * activeMods[pn]['xmod'..col] * getcmod() * getPropertyFromGroup("notes",v,"multSpeed") * (1 - 2*getReverseForCol(col,pn))
+				local scrollSpeed = xmod * activeMods[pn]['xmod'..col] * (1 - 2*getReverseForCol(col,pn))
 				
 				local off = (1 - 2*getReverseForCol(col,pn))
 
@@ -1160,7 +1147,6 @@ function onCreatePost()
 
 	--WRITE MODS HERE! 
 	
-
 	run()
 	
 	--must be called at END of start
@@ -1168,7 +1154,53 @@ function onCreatePost()
 	
 end
 function run()
-
+if songName == 'amnehilesie' then
+	-- this is a one-player-one-side modchart
+definemod{'receptorscroll',0}
+set{0,-320,"movex",pn=2}
+set{0,0,'alpha',pn=1}
+local confused = {{1.4,0.11,7.84,26.6},{1.62,0.12,9.41,26.8},{1.85,0.125,11.4,27.1},{2.12,0.14,13.9,27.3},{2.34,0.152,15.3,0},{4.88,0.167,17.1,0},{5.09,0.172,19.0,0},{5.37,0.185,21.8,0},{5.57,0.19,23.5,0},{5.86,0.209,25.0,0}}
+for k,v in pairs(confused) do
+set{v[1],-v[2],'flip'}
+for col=0,3 do
+set{v[3],v[2]*math.random(-100,100),'confusion'..col,pn=2}
+me{27.8,2,outElastic,0,'confusion'..col,pn=2}
+end
+if v[4] ~= 0 then
+set{v[4],math.random(0,2),'wave',pn=2}
+end
+end
+me{7.5,2,inOutBack,0.5,'stealth',pn=2}
+me{6.03,3,outExpo,2,'wave',pn=2}
+set{27.6,1,'alpha',pn=2}
+set{27.6,0,'stealth',pn=2}
+me{27.6,1.7,inQuint,0,'wave',pn=2}
+me{27.6,3,inOutElastic,-0.05,'flip',pn=2}
+me{27.6,3,outCubic,1,'beat',pn=2}
+me{27.6,2,outInQuart,0.5,'drunk',pn=2}
+me{37.6,2,inSine,0.3,'tipsy',pn=2}
+me{37.6,2,inCirc,1,'drunk',pn=2}
+me{42.6,1,inSine,0.8,'tipsy',pn=2}
+me{45.1,0.5,linear,0.7,'flip',pn=2}
+me{45.1,0.5,outInCirc,1,'reverse',pn=2}
+me{45.7,0.5,linear,1,'flip',pn=2}
+me{45.7,0.5,outInCirc,0,'reverse',pn=2}
+me{46.5,0.5,outElastic,0,'flip',pn=2}
+me{46.5,0.5,outBack,1,'reverse',pn=2}
+me{46.6,3,outInBack,0,'drunk',pn=2}
+me{46.6,3,outInQuad,0,'tipsy',pn=2}
+me{46.6,3,outInQuad,0,'beat',pn=2}
+me{48.1,1,inCubic,0.6,'dark',pn=2}
+me{48.1,2,outCubic,0,'reverse',pn=2}
+mpf{48,72,function(beat)
+	local pn = 2
+		activeMods[pn].movex = 32 * math.sin(beat * math.pi) - 320
+		activeMods[1].rotationz = beat-48
+		activeMods[1].camx = beat-48
+end}
+me{69,3,inSine,0,'alpha',pn=2}
+me{72.1,1,outSine,1,'alpha',pn=2}
+end
 end
 function onSongStart()
     
