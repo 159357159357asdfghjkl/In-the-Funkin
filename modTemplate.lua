@@ -1106,10 +1106,13 @@ function TEMPLATE.update(elapsed)
 				local defaultx, defaulty = defaultPositions[c+1].x, defaultPositions[c+1].y
 
 				local function getcmod()
-				local daSpeed = activeMods[pn]['xmod'..col]
+				local daSpeed = activeMods[pn]['cmod'..col]
 				if daSpeed < 0 then
-					daSpeed = activeMods[pn].cmod < 0 and getProperty('SONG.speed') or activeMods[pn].cmod
-					return daSpeed
+					daSpeed = activeMods[pn].cmod
+				end
+
+				if daSpeed < 0 then
+					daSpeed = getProperty('SONG.speed')
 				end
 					return daSpeed;
 				end
