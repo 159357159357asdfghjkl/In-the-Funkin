@@ -475,26 +475,29 @@ modList = {
 	adrunk = 0, --non conflict accent mod
 	atipsy = 0, --non conflict accent mod
 	bumpyx = 0,
-	bumpyxoffset = 0, --helper mod
-	bumpyxperiod = 0, --helper mod
+	bumpyxoffset = 0,
+	bumpyxperiod = 0,
 	beaty = 0,
 	sawtooth = 0,
-	sawtoothperiod = 0, --helper mod
+	sawtoothperiod = 0,
 	digital = 0,
-	digitalsteps = 0, --helper mod
-	digitaloffset = 0, --helper mod
-	digitalperiod = 0, --helper mod
+	digitalsteps = 0,
+	digitaloffset = 0,
+	digitalperiod = 0,
 	square = 0,
-	squareoffset = 0, --helper mod
-	squareperiod = 0, --helper mod
+	squareoffset = 0,
+	squareperiod = 0,
 	bounce = 0,
-	bounceoffset = 0, --helper mod
-	bounceperiod = 0, --helper mod
+	bounceoffset = 0,
+	bounceperiod = 0,
 	xmode = 0,
-	tiny = 0, -- strength multiplier i think
+	tiny = 0,
 	zigzag = 0,
 	zigzagoffset = 0,
 	zigzagperiod = 0,
+	swap = 0,
+	parabolax = 0,
+	parabolay = 0,
 	movex = 0,
 	movey = 0,
 	amovex = 0,
@@ -889,6 +892,18 @@ function arrowEffects(fYOffset, iCol, pn)
 		xpos = xpos + (m.zigzag*ARROW_SIZE/2) * fResult;
 	end
 
+    if m.swap ~= 0 then
+        xpos = xpos + screenWidth / 2 * m.swap * (pn == 2 and -1 or 1)
+    end
+    
+    if m.parabolax ~= 0 then
+        xpos = xpos + m.parabolax * (fYOffset / ARROW_SIZE) * (fYOffset / ARROW_SIZE)
+    end
+    
+    if m.parabolay ~= 0 then
+        ypos = ypos + m.parabolay * (fYOffset / ARROW_SIZE) * (fYOffset / ARROW_SIZE)
+    end
+    
     return xpos, ypos, rotz
     
 end
@@ -926,7 +941,7 @@ function TEMPLATE.songStart()
     downscroll = false
 
 	for i=0,7 do
-        defaultPositions[i+1].x = getPropertyFromGroup("strumLineNotes",i,"x")--+(i < 4 and 20 or 0)
+        defaultPositions[i+1].x = getPropertyFromGroup("strumLineNotes",i,"x")+(i >= 4 and 20 or 0)
         defaultPositions[i+1].y = getPropertyFromGroup("strumLineNotes",i,"y")
 
         --print(i .. ": " .. defaultPositions[i+1].x .. " " .. defaultPositions[i+1].y)
@@ -1139,7 +1154,7 @@ function onCreatePost()
 end
 function init()
 	--WRITE MODS HERE! 
-	set{0,1,'boost'}
+	--set{0,0.5,'xmode'}
 end
 function onSongStart()
     
