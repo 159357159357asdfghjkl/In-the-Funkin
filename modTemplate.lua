@@ -1,4 +1,4 @@
-﻿print('LOADED TEMPLATE')
+print('LOADED TEMPLATE')
 
 TEMPLATE = {}
 
@@ -6,8 +6,6 @@ TEMPLATE = {}
 -- shoutouts to Kade for letting me do this
 
 -- PSYCH IMPROVED VERSION [README]
--- you can also call it "mirinmania" lol
--- it's a 2D modchart system so it don't support zIndex
 -- use dofile or addLuaScript to call the modchart template in order to write mods
 -- use psych engine 0.7 or higher version
 -- because of some reasons, i can't add some mods
@@ -525,7 +523,7 @@ modList = {
 	camy = 0,
 	rotationz = 0,
 	camwag = 0,
-	xmod = getProperty('SONG.speed'), --scrollSpeed
+	xmod = 1, --scrollSpeed
 }
 
 --column specific mods
@@ -702,12 +700,12 @@ function getYAdjust(fYOffset, iCol, pn)
 		yadj = yadj+fAccelYAdjust;
 	
 	end
-
+	
+    fYOffset = fYOffset+yadj
+    
 	if m.boomerang ~= 0 then
-		yadj = ((-1*fYOffset*fYOffset/500) + 1.5*fYOffset)*m.boomerang
+		fYOffset = ((-1*fYOffset*fYOffset/500) + 1.5*fYOffset)*m.boomerang
 	end
-
-	fYOffset = fYOffset+yadj
 	
 	return fYOffset
 end
@@ -909,20 +907,6 @@ perframe = {}
 event,curevent = {},1
 songStarted = false
 
---make it functional, you can also choose the table ver
-function modease(beat,length,ease,val,modname,playernum,plrs,startval,timin,ex1s,ex2s)
-	me{beat,length,ease,startVal=val,modname,pn=playernum,timing=timin,plr=plrs,ex1=ex1s,ex2=ex2s}
-end
-function setvalue(beat,val,name,playernum)
-	set{beat,val,name,pn=playernum}
-end
-function modperframe(starts,ends,func)
-	mpf{starts,ends,func}
-end
-function callbackevent(startbeat,func,idk)
-	m2{startbeat,func,idk}
-end
---
 
 function set(t)
 	table.insert(mods,{t[1],0,linear,t[2],t[3],pn=t.pn})
@@ -1103,17 +1087,17 @@ function TEMPLATE.update(elapsed)
 				
 				local defaultx, defaulty = defaultPositions[c+1].x, defaultPositions[c+1].y
 
-				local scrollSpeed = xmod * activeMods[pn]['xmod'..col] * (1 - 2*getReverseForCol(col,pn))
+				local scrollSpeeds = xmod * activeMods[pn]['xmod'..col] * (1 - 2*getReverseForCol(col,pn)) * scrollSpeed
 				
 				local off = (1 - 2*getReverseForCol(col,pn))
 
-				local ypos = getYAdjust(defaulty - (getSongPosition() - targTime),col,pn) * scrollSpeed * 0.45 - off
+				local ypos = getYAdjust(defaulty - (getSongPosition() - targTime),col,pn) * scrollSpeeds * 0.45 - off + ARROW_SIZE / 2
 				
 				local xa, ya, rz = arrowEffects(ypos-defaulty, col, pn)
 				local alp = arrowAlpha(ypos-defaulty, col, pn)
 				
 				if getPropertyFromGroup('notes',v,"isSustainNote") --[[and not note.isParent]] then
-					local ypos2 = getYAdjust(defaulty - ((getSongPosition()+.1) - targTime),col,pn) * scrollSpeed * 0.45 - off
+					local ypos2 = getYAdjust(defaulty - ((getSongPosition()+.1) - targTime),col,pn) * scrollSpeeds * 0.45 - off + ARROW_SIZE / 2
 					local xa2, ya2 = arrowEffects(ypos2-defaulty, col, pn)
 
 					--if scrollSpeed >= 0 then
@@ -1147,14 +1131,15 @@ function onCreatePost()
 
 	--WRITE MODS HERE! 
 	
-	run()
+	init()
 	
 	--must be called at END of start
 	TEMPLATE.setup()
 	
 end
-function run()
---write mods
+function init()
+	--WRITE MODS HERE! 
+	set{0,1,'boost'}
 end
 function onSongStart()
     
