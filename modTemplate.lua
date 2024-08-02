@@ -429,6 +429,9 @@ function math.clamp(val,min,max)
 	return val
 end
 
+function lerp(a, b, t)
+    return a + t * (b-t)
+end
 function square(angle)
 	local fAngle = angle % (math.pi * 2)
 		--Hack: This ensures the hold notes don't flicker right before they're hit.
@@ -498,6 +501,10 @@ modList = {
 	swap = 0,
 	parabolax = 0,
 	parabolay = 0,
+	scalex = 0,
+	scaley = 0,
+	squish = 0,
+	stretch = 0,
 	movex = 0,
 	movey = 0,
 	amovex = 0,
@@ -539,6 +546,10 @@ for i=0,3 do
 	modList['stealth'..i] = 0
 	modList['confusion'..i] = 0
 	modList['reverse'..i] = 0
+	modList['scalex'..i] = 0
+	modList['scaley'..i] = 0
+	modList['squish'..i] = 0
+	modList['stretch'..i] = 0
 	modList['xmod'..i] = 1 --column specific scrollSpeed multiplier
 end
 
@@ -713,6 +724,27 @@ function getYAdjust(fYOffset, iCol, pn)
 	return fYOffset
 end
 
+function getScale(iCol, pn)
+    local x = 0.7
+    local y = 0.7
+    local m = activeMods[pn]
+    x = x + m.scalex + m['scalex'..iCol]
+    y = y + m.scaley + m['scaley'..iCol]
+    local angle = 0;
+    local stretch = m.stretch + m['stretch'..iCol]
+    local squish = m.squish + m['squish'..iCol]
+    local stretchX = lerp(1, 0.5, stretch);
+    local stretchY = lerp(1, 2, stretch);
+
+    local squishX = lerp(1, 2, squish);
+    local squishY = lerp(1, 0.5, squish);
+	x = x * (math.sin(angle * math.pi / 180) * squishY) + (math.cos(angle * math.pi / 180) * squishX);
+	x = x * (math.sin(angle * math.pi / 180) * stretchY) + (math.cos(angle * math.pi / 180) * stretchX);
+
+	y = y * (math.cos(angle * math.pi / 180) * stretchY) + (math.sin(angle * math.pi / 180) * stretchX);
+	y = y * (math.cos(angle * math.pi / 180) * squishY) + (math.sin(angle * math.pi / 180) * squishX);
+		return x,y
+end
 function arrowEffects(fYOffset, iCol, pn)
     local m = activeMods[pn]
 	
@@ -1070,7 +1102,9 @@ function TEMPLATE.update(elapsed)
                 setPropertyFromGroup("strumLineNotes",c,"angle",rz)
                 setPropertyFromGroup("strumLineNotes",c,"alpha",alp)
 
-				
+			local scalex, scaley = getScale(col, pn)
+    setPropertyFromGroup("strumLineNotes",c,"scale.x",scalex)
+    setPropertyFromGroup("strumLineNotes",c,"scale.y",scaley)
 				--local scrollSpeed = xmod * activeMods[pn]['xmod'..col] * (1 - 2*getReverseForCol(col,pn))
 				--setLaneScrollspeed(c,scrollSpeed)
 				
@@ -1101,7 +1135,7 @@ function TEMPLATE.update(elapsed)
 				local targTime = getPropertyFromGroup('notes',v,"strumTime")
 				
 				local defaultx, defaulty = defaultPositions[c+1].x, defaultPositions[c+1].y
-
+			    local scalex, scaley = getScale(col, pn)
 				local scrollSpeeds = xmod * activeMods[pn]['xmod'..col] * (1 - 2*getReverseForCol(col,pn)) * scrollSpeed
 				
 				local off = (1 - 2*getReverseForCol(col,pn))
@@ -1126,7 +1160,8 @@ function TEMPLATE.update(elapsed)
             	setPropertyFromGroup("notes",v,"x",defaultx + xa + (getPropertyFromGroup('notes',v,"isSustainNote") and 35 or 0))
             	setPropertyFromGroup("notes",v,"y",ypos + ya)
             	setPropertyFromGroup("notes",v,"alpha",alp)
-				
+    setPropertyFromGroup("notes",v,"scale.x",scalex)
+    setPropertyFromGroup("notes",v,"scale.y",scaley)			
 				
 			end
 			
@@ -1154,7 +1189,7 @@ function onCreatePost()
 end
 function init()
 	--WRITE MODS HERE! 
-	--set{0,0.5,'xmode'}
+	set{0,1,'stretch'}
 end
 function onSongStart()
     
