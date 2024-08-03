@@ -505,6 +505,12 @@ modList = {
 	scaley = 0,
 	squish = 0,
 	stretch = 0,
+	pulseinner = 0,
+	pulseouter = 0,
+	pulseoffset = 0,
+	pulseperiod = 0,
+	shrinkmult = 0,
+	shrinklinear = 0,
 	movex = 0,
 	movey = 0,
 	amovex = 0,
@@ -546,6 +552,7 @@ for i=0,3 do
 	modList['stealth'..i] = 0
 	modList['confusion'..i] = 0
 	modList['reverse'..i] = 0
+	modList['tiny'..i] = 0
 	modList['scalex'..i] = 0
 	modList['scaley'..i] = 0
 	modList['squish'..i] = 0
@@ -724,7 +731,40 @@ function getYAdjust(fYOffset, iCol, pn)
 	return fYOffset
 end
 
-function getScale(iCol, pn, sx, sy)
+function getZoom(fYOffset, iCol, pn)
+	local m = activeMods[pn]
+    local fZoom = 1
+	local fPulseInner = 1.0
+	if m.pulseinner ~= 0 or m.pulseouter ~= 0 then
+		fPulseInner = ((m.pulseinner*0.5)+1)
+		if fPulseInner == 0 then
+			fPulseInner = 0.01
+		end
+	end
+    if m.pulseinner ~= 0 or m.pulseouter ~= 0 then
+    local sine = math.sin(((fYOffset+(100.0*m.pulseoffset))/(0.4*(ARROW_SIZE+(m.pulseperiod*ARROW_SIZE)))))
+
+		fZoom = fZoom*((sine*(m.pulseouter*0.5))+fPulseInner)
+	end
+	if m.shrinkmult ~= 0 and fYOffset >= 0 then
+	fZoom = fZoom * (1/(1+(fYOffset*(m.shrinkmult/100.0))))
+    end
+    if m.shrinklinear ~= 0 and fYOffset >= 0 then
+    fZoom = fZoom + (fYOffset*(0.5*m.shrinklinear/ARROW_SIZE))
+    end
+	local fTinyPercent = m.tiny
+	if fTinyPercent ~= 0 then
+		fTinyPercent = math.pow( 0.5, fTinyPercent )
+		fZoom = fZoom * fTinyPercent
+	end
+	if m['tiny'..iCol] ~= 0 then
+		fTinyPercent = math.pow( 0.5,  m['tiny'..iCol] )
+		fZoom = fZoom * fTinyPercent
+	end
+	return fZoom
+end
+
+function getScale(fYOffset, iCol, pn, sx, sy)
     local x = sx
     local y = sy
     local m = activeMods[pn]
@@ -913,7 +953,7 @@ function arrowEffects(fYOffset, iCol, pn)
 
 	if m.tiny ~= 0 then
 		local fTinyPercent = m.tiny
-		fTinyPercent = math.min( math.pow(0.5, fTinyPercent), 2 );
+		fTinyPercent = math.min( math.pow(0.5, fTinyPercent), 1 );
 		xpos = xpos * fTinyPercent
 	end
 
@@ -1104,9 +1144,14 @@ function TEMPLATE.update(elapsed)
                 setPropertyFromGroup("strumLineNotes",c,"angle",rz)
                 setPropertyFromGroup("strumLineNotes",c,"alpha",alp)
 
-			local scalex, scaley = getScale(col, pn, defaultscale[c+1].x, defaultscale[c+1].y)
+			local scalex, scaley = getScale(0, col, pn, defaultscale[c+1].x, defaultscale[c+1].y)
     setPropertyFromGroup("strumLineNotes",c,"scale.x",scalex)
     setPropertyFromGroup("strumLineNotes",c,"scale.y",scaley)
+    
+    local zoom = getZoom(0,col,pn)
+
+setPropertyFromGroup("strumLineNotes",c,"scale.x",getPropertyFromGroup("strumLineNotes",c,"scale.x")*zoom)
+setPropertyFromGroup("strumLineNotes",c,"scale.y",getPropertyFromGroup("strumLineNotes",c,"scale.y")*zoom)
 				--local scrollSpeed = xmod * activeMods[pn]['xmod'..col] * (1 - 2*getReverseForCol(col,pn))
 				--setLaneScrollspeed(c,scrollSpeed)
 				
@@ -1137,16 +1182,15 @@ function TEMPLATE.update(elapsed)
 				local targTime = getPropertyFromGroup('notes',v,"strumTime")
 				
 				local defaultx, defaulty = defaultPositions[c+1].x, defaultPositions[c+1].y
-			    local scalex, scaley = getScale(col, pn, defaultscale[c+1].x, defaultscale[c+1].y)
 				local scrollSpeeds = xmod * activeMods[pn]['xmod'..col] * (1 - 2*getReverseForCol(col,pn)) * scrollSpeed
 				
 				local off = (1 - 2*getReverseForCol(col,pn))
 
 				local ypos = getYAdjust(defaulty - (getSongPosition() - targTime),col,pn) * scrollSpeeds * 0.45 - off + ARROW_SIZE / 2
-				
+					local zoom = getZoom(ypos-defaulty,col,pn)
 				local xa, ya, rz = arrowEffects(ypos-defaulty, col, pn)
 				local alp = arrowAlpha(ypos-defaulty, col, pn)
-				
+			    local scalex, scaley = getScale(ypos-defaulty, col, pn, defaultscale[c+1].x, defaultscale[c+1].y)
 				if getPropertyFromGroup('notes',v,"isSustainNote") --[[and not note.isParent]] then
 					local ypos2 = getYAdjust(defaulty - ((getSongPosition()+.1) - targTime),col,pn) * scrollSpeeds * 0.45 - off + ARROW_SIZE / 2
 					local xa2, ya2 = arrowEffects(ypos2-defaulty, col, pn)
@@ -1160,11 +1204,12 @@ function TEMPLATE.update(elapsed)
 					setPropertyFromGroup("notes",v,"angle",rz)
 				end
             	setPropertyFromGroup("notes",v,"x",defaultx + xa + (getPropertyFromGroup('notes',v,"isSustainNote") and 35 or 0))
-            	setPropertyFromGroup("notes",v,"y",ypos + ya)
+            	setPropertyFromGroup("notes",v,"y",ypos + ya + (getPropertyFromGroup('notes',v,"isSustainNote") and 35 or 0))
             	setPropertyFromGroup("notes",v,"alpha",alp)
     setPropertyFromGroup("notes",v,"scale.x",scalex)
-    setPropertyFromGroup("notes",v,"scale.y",(isSus and 0 or scaley))			
-				
+    setPropertyFromGroup("notes",v,"scale.y",(getPropertyFromGroup('notes',v,"isSustainNote") and 1 or scaley))		
+setPropertyFromGroup("notes",v,"scale.x",(getPropertyFromGroup('notes',v,"scale.x")*zoom))
+            	setPropertyFromGroup("notes",v,"scale.y",(getPropertyFromGroup('notes',v,"scale.y")*zoom))
 			end
 			
 		end
@@ -1188,7 +1233,6 @@ function onCreatePost()
 end
 function init()
 	--WRITE MODS HERE! 
-	set{0,0.5,'squish'}
 end
 function onSongStart()
     
