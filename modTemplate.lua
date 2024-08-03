@@ -430,7 +430,7 @@ function math.clamp(val,min,max)
 end
 
 function lerp(a, b, t)
-    return a + t * (b-t)
+    return a + t * (b-a)
 end
 function square(angle)
 	local fAngle = angle % (math.pi * 2)
@@ -724,9 +724,9 @@ function getYAdjust(fYOffset, iCol, pn)
 	return fYOffset
 end
 
-function getScale(iCol, pn)
-    local x = 0.7
-    local y = 0.7
+function getScale(iCol, pn, sx, sy)
+    local x = sx
+    local y = sy
     local m = activeMods[pn]
     x = x + m.scalex + m['scalex'..iCol]
     y = y + m.scaley + m['scaley'..iCol]
@@ -738,11 +738,11 @@ function getScale(iCol, pn)
 
     local squishX = lerp(1, 2, squish);
     local squishY = lerp(1, 0.5, squish);
-	x = x * (math.sin(angle * math.pi / 180) * squishY) + (math.cos(angle * math.pi / 180) * squishX);
-	x = x * (math.sin(angle * math.pi / 180) * stretchY) + (math.cos(angle * math.pi / 180) * stretchX);
+	x = x * ((math.sin(angle * math.pi / 180) * squishY) + (math.cos(angle * math.pi / 180) * squishX));
+	x = x * ((math.sin(angle * math.pi / 180) * stretchY) + (math.cos(angle * math.pi / 180) * stretchX));
 
-	y = y * (math.cos(angle * math.pi / 180) * stretchY) + (math.sin(angle * math.pi / 180) * stretchX);
-	y = y * (math.cos(angle * math.pi / 180) * squishY) + (math.sin(angle * math.pi / 180) * squishX);
+	y = y * ((math.cos(angle * math.pi / 180) * stretchY) + (math.sin(angle * math.pi / 180) * stretchX));
+	y = y * ((math.cos(angle * math.pi / 180) * squishY) + (math.sin(angle * math.pi / 180) * squishX));
 		return x,y
 end
 function arrowEffects(fYOffset, iCol, pn)
@@ -944,7 +944,7 @@ end
 
 
 defaultPositions = {{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0}}
-
+defaultscale = {{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0}}
 
 
 -- events
@@ -973,9 +973,11 @@ function TEMPLATE.songStart()
     downscroll = false
 
 	for i=0,7 do
-        defaultPositions[i+1].x = getPropertyFromGroup("strumLineNotes",i,"x")+(i >= 4 and 20 or 0)
-        defaultPositions[i+1].y = getPropertyFromGroup("strumLineNotes",i,"y")
-
+        defaultPositions[i+1].x = getPropertyFromGroup("strumLineNotes",i,"x")
+                defaultPositions[i+1].y = getPropertyFromGroup("strumLineNotes",i,"y")
+        defaultscale[i+1].x = getPropertyFromGroup("strumLineNotes",i,"scale.x")
+        defaultscale[i+1].y = getPropertyFromGroup("strumLineNotes",i,"scale.y")
+        
         --print(i .. ": " .. defaultPositions[i+1].x .. " " .. defaultPositions[i+1].y)
     end
 	
@@ -1102,7 +1104,7 @@ function TEMPLATE.update(elapsed)
                 setPropertyFromGroup("strumLineNotes",c,"angle",rz)
                 setPropertyFromGroup("strumLineNotes",c,"alpha",alp)
 
-			local scalex, scaley = getScale(col, pn)
+			local scalex, scaley = getScale(col, pn, defaultscale[c+1].x, defaultscale[c+1].y)
     setPropertyFromGroup("strumLineNotes",c,"scale.x",scalex)
     setPropertyFromGroup("strumLineNotes",c,"scale.y",scaley)
 				--local scrollSpeed = xmod * activeMods[pn]['xmod'..col] * (1 - 2*getReverseForCol(col,pn))
@@ -1135,7 +1137,7 @@ function TEMPLATE.update(elapsed)
 				local targTime = getPropertyFromGroup('notes',v,"strumTime")
 				
 				local defaultx, defaulty = defaultPositions[c+1].x, defaultPositions[c+1].y
-			    local scalex, scaley = getScale(col, pn)
+			    local scalex, scaley = getScale(col, pn, defaultscale[c+1].x, defaultscale[c+1].y)
 				local scrollSpeeds = xmod * activeMods[pn]['xmod'..col] * (1 - 2*getReverseForCol(col,pn)) * scrollSpeed
 				
 				local off = (1 - 2*getReverseForCol(col,pn))
@@ -1161,7 +1163,7 @@ function TEMPLATE.update(elapsed)
             	setPropertyFromGroup("notes",v,"y",ypos + ya)
             	setPropertyFromGroup("notes",v,"alpha",alp)
     setPropertyFromGroup("notes",v,"scale.x",scalex)
-    setPropertyFromGroup("notes",v,"scale.y",scaley)			
+    setPropertyFromGroup("notes",v,"scale.y",(isSus and 0 or scaley))			
 				
 			end
 			
@@ -1174,9 +1176,6 @@ end
 
 
 function onCreatePost()
-	for s=0,3 do
-	setPropertyFromGroup("opponentStrums",s,"x",getPropertyFromGroup("opponentStrums",s,"x")+20)
-	end
 	TEMPLATE.InitMods()
 
 	--WRITE MODS HERE! 
@@ -1189,7 +1188,7 @@ function onCreatePost()
 end
 function init()
 	--WRITE MODS HERE! 
-	set{0,1,'stretch'}
+	set{0,0.5,'squish'}
 end
 function onSongStart()
     
