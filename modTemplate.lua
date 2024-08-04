@@ -461,6 +461,14 @@ function quantize(f,interval)
 return int((f+interval/2)/interval)*interval;
 end
 
+function selectTanType(angle,is_csc)
+if is_csc ~= 0 then
+return fastCsc(angle)
+else
+return fastTan(angle)
+end
+end
+
 ---------------------------------------------------------------------------------------
 ----------------------END DON'T TOUCH IT KIDDO-----------------------------------------
 ---------------------------------------------------------------------------------------
@@ -474,7 +482,33 @@ modList = {
 	flip = 0,
 	invert = 0,
 	drunk = 0,
+	drunkspeed = 0,
+	drunkoffset = 0,
+	drunkperiod = 0,
 	tipsy = 0,
+	tipsyspeed = 0,
+	tipsyoffset = 0,
+	tandrunk = 0,
+	tandrunkspeed = 0,
+	tandrunkoffset = 0,
+	tandrunkperiod = 0,
+	drunky = 0,
+	drunkyspeed = 0,
+	drunkyoffset = 0,
+	drunkyperiod = 0,
+	tandrunky = 0,
+	tandrunkyspeed = 0,
+	tandrunkyoffset = 0,
+	tandrunkyperiod = 0,
+	tipsyx = 0,
+	tipsyxspeed = 0,
+	tipsyxoffset = 0,
+	tantipsy = 0,
+	tantipsyspeed = 0,
+	tantipsyoffset = 0,
+	tantipsyx = 0,
+	tantipsyxspeed = 0,
+	tantipsyxoffset = 0,
 	adrunk = 0, --non conflict accent mod
 	atipsy = 0, --non conflict accent mod
 	bumpyx = 0,
@@ -493,14 +527,21 @@ modList = {
 	bounce = 0,
 	bounceoffset = 0,
 	bounceperiod = 0,
+	bouncey = 0,
+	bounceyoffset = 0,
+	bounceyperiod = 0,
 	xmode = 0,
 	tiny = 0,
 	zigzag = 0,
 	zigzagoffset = 0,
 	zigzagperiod = 0,
+	attenuatex = 0,
+	attenuatey = 0,
 	swap = 0,
 	parabolax = 0,
 	parabolay = 0,
+	scale = 0,
+	zoom = 0,
 	scalex = 0,
 	scaley = 0,
 	squish = 0,
@@ -513,7 +554,9 @@ modList = {
 	shrinklinear = 0,
 	movex = 0,
 	movey = 0,
+	movez = 0,
 	amovex = 0,
+	amovez = 0,
 	amovey = 0,
 	reverse = 0,
 	split = 0,
@@ -530,29 +573,37 @@ modList = {
 	brake = 0,
 	boost = 0,
 	boomerang = 0,
+	expand = 0,
+	expandperiod = 0,
 	hidden = 0,
 	hiddenoffset = 0,
 	sudden = 0,
 	suddenoffset = 0,
 	alternate = 0,
+	inside = 0,
 	camx = 0,
 	camy = 0,
 	rotationz = 0,
 	camwag = 0,
 	xmod = 1, --scrollSpeed
+	cosecant = 0,
 }
 
 --column specific mods
 for i=0,3 do
 	modList['movex'..i] = 0
 	modList['movey'..i] = 0
+	modList['movez'..i] = 0
 	modList['amovex'..i] = 0
 	modList['amovey'..i] = 0
+	modList['amovez'..i] = 0
 	modList['dark'..i] = 0
 	modList['stealth'..i] = 0
 	modList['confusion'..i] = 0
 	modList['reverse'..i] = 0
 	modList['tiny'..i] = 0
+	modList['scale'..i] = 0
+	modList['zoom'..i] = 0
 	modList['scalex'..i] = 0
 	modList['scaley'..i] = 0
 	modList['squish'..i] = 0
@@ -695,6 +746,7 @@ function getYAdjust(fYOffset, iCol, pn)
 	local m = activeMods[pn]
 	
 	local yadj = 0
+	local fScrollSpeed = 1
 	if m.wave ~= 0 then
 		yadj = yadj + m.wave * 20*math.sin( (fYOffset+250)/76 )
 	end
@@ -727,7 +779,15 @@ function getYAdjust(fYOffset, iCol, pn)
 	if m.boomerang ~= 0 then
 		fYOffset = ((-1*fYOffset*fYOffset/500) + 1.5*fYOffset)*m.boomerang
 	end
-	
+	if m.expand ~= 0 then
+	local last = 0
+	local time = getSongPosition() / 1000 * 4294.967296 / 1000000
+    expandSeconds = expandSeconds + (time - last);
+    expandSeconds = expandSeconds % ((math.pi * 2) / (m.expandperiod + 1));
+    last = time
+	    local fExpandMultiplier = scale(math.cos(expandSeconds * 3 * (m.expandperiod + 1)), -1, 1, 0.75, 1.75);
+      fScrollSpeed = fScrollSpeed * scale(m.expand, 0, 1, 1, fExpandMultiplier);
+	end
 	return fYOffset
 end
 
@@ -761,6 +821,7 @@ function getZoom(fYOffset, iCol, pn)
 		fTinyPercent = math.pow( 0.5,  m['tiny'..iCol] )
 		fZoom = fZoom * fTinyPercent
 	end
+	    fZoom = fZoom + m.zoom + m['zoom'..iCol]
 	return fZoom
 end
 
@@ -768,8 +829,8 @@ function getScale(fYOffset, iCol, pn, sx, sy)
     local x = sx
     local y = sy
     local m = activeMods[pn]
-    x = x + m.scalex + m['scalex'..iCol]
-    y = y + m.scaley + m['scaley'..iCol]
+    x = x + m.scalex + m['scalex'..iCol] + m.scale + m['scale'..iCol] 
+    y = y + m.scaley + m['scaley'..iCol] + m.scale + m['scale'..iCol] 
     local angle = 0;
     local stretch = m.stretch + m['stretch'..iCol]
     local squish = m.squish + m['squish'..iCol]
@@ -788,7 +849,7 @@ end
 function arrowEffects(fYOffset, iCol, pn)
     local m = activeMods[pn]
 	
-    local xpos, ypos, rotz = 0, 0, 0
+    local xpos, ypos, rotz, zpos = 0, 0, 0, 0
 	
 	if m['confusion'..iCol] ~= 0 or m.confusion ~= 0 then
 		rotz = rotz + m['confusion'..iCol] + m.confusion
@@ -798,10 +859,28 @@ function arrowEffects(fYOffset, iCol, pn)
 	end
 	
     if m.drunk ~= 0 then
-        xpos = xpos + m.drunk * ( math.cos( getSongPosition()*0.001 + iCol*(0.2) + 1*(0.2) + fYOffset*(10)/720) * ARROW_SIZE*0.5 )
+        xpos = xpos + m.drunk * math.cos(getSongPosition()*0.001 * (1 + m.drunkspeed) + iCol * ((m.drunkoffset * 0.2) + 0.2) + fYOffset * ((m.drunkperiod * 10) + 10) / screenHeight) * ARROW_SIZE * 0.5;
+    end
+    if m.drunky ~= 0 then
+        ypos = ypos + m.drunky * math.cos(getSongPosition()*0.001 * (1 + m.drunkyspeed) + iCol * ((m.drunkyoffset * 0.2) + 0.2) + fYOffset * ((m.drunkyperiod * 10) + 10) / screenHeight) * ARROW_SIZE * 0.5;
+    end
+    if m.tandrunk ~= 0 then
+    xpos = xpos + m.tandrunk * selectTanType(getSongPosition()*0.001 * (1 + m.tandrunkspeed) + iCol * ((m.tandrunkoffset * 0.2) + 0.2) + fYOffset * ((m.tandrunkperiod * 10) + 10) / screenHeight,m.cosecant) * ARROW_SIZE * 0.5;
+    end
+    if m.tandrunky ~= 0 then
+    ypos = ypos + m.tandrunky * selectTanType(getSongPosition()*0.001 * (1 + m.tandrunkyspeed) + iCol * ((m.tandrunkyoffset * 0.2) + 0.2) + fYOffset * ((m.tandrunkyperiod * 10) + 10) / screenHeight,m.cosecant) * ARROW_SIZE * 0.5;
     end
     if m.tipsy ~= 0 then
-        ypos = ypos + m.tipsy * ( math.cos( getSongPosition()*0.001 *(1.2) + iCol*(2.0) + 1*(0.2) ) * ARROW_SIZE*0.4 )
+        ypos = ypos + m.tipsy * math.cos( getSongPosition() * 0.001 * ((m.tipsyspeed * 1.2) + 1.2) + (iCol * ((m.tipsyoffset * 1.8) + 1.8)))* ARROW_SIZE * 0.4
+    end
+    if m.tantipsy ~= 0 then
+        ypos = ypos + m.tantipsy * selectTanType( getSongPosition() * 0.001 * ((m.tantipsyspeed * 1.2) + 1.2) + (iCol * ((m.tantipsyoffset * 1.8) + 1.8)),m.cosecant)* ARROW_SIZE * 0.4
+    end
+    if m.tipsyx ~= 0 then
+        xpos = xpos + m.tipsyx * math.cos( getSongPosition() * 0.001 * ((m.tipsyxspeed * 1.2) + 1.2) + (iCol * ((m.tipsyxoffset * 1.8) + 1.8))) * ARROW_SIZE * 0.4
+    end
+     if m.tantipsyx ~= 0 then
+        xpos = xpos + m.tantipsyx * selectTanType( getSongPosition() * 0.001 * ((m.tantipsyxspeed * 1.2) + 1.2) + (iCol * ((m.tantipsyxoffset * 1.8) + 1.8)),m.cosecant)* ARROW_SIZE * 0.4
     end
     if m.adrunk ~= 0 then
         xpos = xpos + m.adrunk * ( math.cos( getSongPosition()*0.001 + iCol*(0.2) + 1*(0.2) + fYOffset*(10)/720) * ARROW_SIZE*0.5 )
@@ -822,9 +901,15 @@ function arrowEffects(fYOffset, iCol, pn)
 	if m['amovey'..iCol] ~= 0 or m.amovey ~= 0 then
 		ypos = ypos + m['amovey'..iCol] + m.amovey
 	end
+	if m['movez'..iCol] ~= 0 or m.movez ~= 0 then
+	    zpos = zpos + m['movez'..iCol] + m.movez
+	end
+	if m['amovez'..iCol] ~= 0 or m.amovez ~= 0 then
+		zpos = zpos + m['amovez'..iCol] + m.amovez
+	end
 	
 	if m['reverse'..iCol] ~= 0 or m.reverse ~= 0 or m.split ~= 0 or m.cross ~= 0 or m.alternate ~= 0 or m.centered ~= 0 then
-		ypos = ypos + getReverseForCol(iCol,pn) * 450
+		ypos = ypos + getReverseForCol(iCol,pn) * 520
 	end
 	
 	if m.flip ~= 0 then
@@ -947,6 +1032,11 @@ function arrowEffects(fYOffset, iCol, pn)
 		xpos = xpos + m.bounce * ARROW_SIZE * 0.5 * fBounceAmt;
 	end
 
+	if m.bouncey ~= 0 then
+		local fBounceAmt = math.abs( math.sin( ( (fYOffset + (1.0 * (m.bounceyoffset) ) ) / ( 60 + m.bounceyperiod*60) ) ) );
+		ypos = ypos + m.bouncey * ARROW_SIZE * 0.5 * fBounceAmt;
+	end
+	
 	if m.xmode ~= 0 then
 		xpos = xpos + m.xmode * (pn == 2 and -fYOffset or fYOffset)
 	end
@@ -975,8 +1065,18 @@ function arrowEffects(fYOffset, iCol, pn)
     if m.parabolay ~= 0 then
         ypos = ypos + m.parabolay * (fYOffset / ARROW_SIZE) * (fYOffset / ARROW_SIZE)
     end
-    
-    return xpos, ypos, rotz
+    if m.inside ~= 0 then
+        xpos = xpos +math.sin(0 + (fYOffset*0.004))*(ARROW_SIZE* (iCol % 2 == 0 and 1 or -1) * m.inside*0.5);
+    end
+    if m.attenuatex ~= 0 then
+    local fXOffset =getPropertyFromGroup('strumLineNotes',(pn==2 and iCol+4 or iCol),"x")
+   xpos = xpos +m.attenuatex * (fYOffset / ARROW_SIZE) * (fYOffset / ARROW_SIZE) * (fXOffset / ARROW_SIZE);
+    end
+    if m.attenuatey ~= 0 then
+    local fXOffset =getPropertyFromGroup('strumLineNotes',(pn==2 and iCol+4 or iCol),"x")
+    ypos = ypos +m.attenuatey * (fYOffset / ARROW_SIZE) * (fYOffset / ARROW_SIZE) * (fXOffset / ARROW_SIZE);
+    end
+    return xpos, ypos, rotz, zpos
     
 end
 
@@ -1127,13 +1227,14 @@ function TEMPLATE.update(elapsed)
 
 	setCamNotes(activeMods[1].camx,activeMods[1].camy,activeMods[1].rotationz + activeMods[1].camwag * math.sin(beat*math.pi))
 	
+
+			
 	if songStarted then
 		for pn=1,2 do
 			local xmod = activeMods[pn].xmod
 			for col=0,3 do
-			
 				local c = (pn-1)*4 + col
-				local xp, yp, rz = arrowEffects(0, col, pn)
+				local xp, yp, rz, zp = arrowEffects(0, col, pn)
 				local alp = receptorAlpha(col,pn)
 
 				--print('Areceptor '..c..' is '..tostring(receptor))
@@ -1147,11 +1248,13 @@ function TEMPLATE.update(elapsed)
 			local scalex, scaley = getScale(0, col, pn, defaultscale[c+1].x, defaultscale[c+1].y)
     setPropertyFromGroup("strumLineNotes",c,"scale.x",scalex)
     setPropertyFromGroup("strumLineNotes",c,"scale.y",scaley)
-    
+
     local zoom = getZoom(0,col,pn)
 
 setPropertyFromGroup("strumLineNotes",c,"scale.x",getPropertyFromGroup("strumLineNotes",c,"scale.x")*zoom)
 setPropertyFromGroup("strumLineNotes",c,"scale.y",getPropertyFromGroup("strumLineNotes",c,"scale.y")*zoom)
+		
+			
 				--local scrollSpeed = xmod * activeMods[pn]['xmod'..col] * (1 - 2*getReverseForCol(col,pn))
 				--setLaneScrollspeed(c,scrollSpeed)
 				
@@ -1188,11 +1291,12 @@ setPropertyFromGroup("strumLineNotes",c,"scale.y",getPropertyFromGroup("strumLin
 
 				local ypos = getYAdjust(defaulty - (getSongPosition() - targTime),col,pn) * scrollSpeeds * 0.45 - off + ARROW_SIZE / 2
 					local zoom = getZoom(ypos-defaulty,col,pn)
-				local xa, ya, rz = arrowEffects(ypos-defaulty, col, pn)
+				local xa, ya, rz, za = arrowEffects(ypos-defaulty, col, pn)
 				local alp = arrowAlpha(ypos-defaulty, col, pn)
 			    local scalex, scaley = getScale(ypos-defaulty, col, pn, defaultscale[c+1].x, defaultscale[c+1].y)
 				if getPropertyFromGroup('notes',v,"isSustainNote") --[[and not note.isParent]] then
 					local ypos2 = getYAdjust(defaulty - ((getSongPosition()+.1) - targTime),col,pn) * scrollSpeeds * 0.45 - off + ARROW_SIZE / 2
+
 					local xa2, ya2 = arrowEffects(ypos2-defaulty, col, pn)
 
 					--if scrollSpeed >= 0 then
@@ -1215,8 +1319,7 @@ setPropertyFromGroup("notes",v,"scale.x",(getPropertyFromGroup('notes',v,"scale.
 		end
 		
 	end
-	
-	
+
 end
 
 
@@ -1232,7 +1335,7 @@ function onCreatePost()
 	
 end
 function init()
-	--WRITE MODS HERE! 
+	--WRITE MODS HERE!
 end
 function onSongStart()
     

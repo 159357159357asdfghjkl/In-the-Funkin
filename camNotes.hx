@@ -1,3 +1,5 @@
+import flixel.math.FlxMath;
+
 var camNotes:FlxCamera;
 function onCreatePost(){
     camNotes = new FlxCamera();
@@ -30,4 +32,10 @@ return Math.round(v);
 });
 createGlobalCallback('int',function(v:Float):Int{
 return Std.int(v);
+});
+createGlobalCallback('fastTan',function(x:Float):Float{
+return FlxMath.fastSin(x) / FlxMath.fastCos(x);
+});
+createGlobalCallback('fastCsc',function(x:Float):Float{
+return 1/FlxMath.fastSin(x);
 });
