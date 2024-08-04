@@ -746,7 +746,6 @@ function getYAdjust(fYOffset, iCol, pn)
 	local m = activeMods[pn]
 	
 	local yadj = 0
-	local fScrollSpeed = 1
 	if m.wave ~= 0 then
 		yadj = yadj + m.wave * 20*math.sin( (fYOffset+250)/76 )
 	end
@@ -778,15 +777,6 @@ function getYAdjust(fYOffset, iCol, pn)
     
 	if m.boomerang ~= 0 then
 		fYOffset = ((-1*fYOffset*fYOffset/500) + 1.5*fYOffset)*m.boomerang
-	end
-	if m.expand ~= 0 then
-	local last = 0
-	local time = getSongPosition() / 1000 * 4294.967296 / 1000000
-    expandSeconds = expandSeconds + (time - last);
-    expandSeconds = expandSeconds % ((math.pi * 2) / (m.expandperiod + 1));
-    last = time
-	    local fExpandMultiplier = scale(math.cos(expandSeconds * 3 * (m.expandperiod + 1)), -1, 1, 0.75, 1.75);
-      fScrollSpeed = fScrollSpeed * scale(m.expand, 0, 1, 1, fExpandMultiplier);
 	end
 	return fYOffset
 end
