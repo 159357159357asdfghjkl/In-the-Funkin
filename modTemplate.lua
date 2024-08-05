@@ -574,6 +574,10 @@ modList = {
 	brake = 0,
 	boost = 0,
 	boomerang = 0,
+	expand = 0,
+	expandperiod = 0,
+	tanexpand = 0,
+	tanexpandperiod = 0,
 	hidden = 0,
 	hiddenoffset = 0,
 	sudden = 0,
@@ -745,6 +749,7 @@ function getYAdjust(fYOffset, iCol, pn)
 	local m = activeMods[pn]
 	
 	local yadj = 0
+	local fScrollSpeed = 1
 	if m.wave ~= 0 then
 		yadj = yadj + m.wave * 20*math.sin( (fYOffset+250)/76 )
 	end
@@ -777,6 +782,27 @@ function getYAdjust(fYOffset, iCol, pn)
 	if m.boomerang ~= 0 then
 		fYOffset = ((-1*fYOffset*fYOffset/500) + 1.5*fYOffset)*m.boomerang
 	end
+	if m.expand ~= 0 then
+	local last = 0
+	local time = getSongPosition() / 1000
+	local expandSeconds = 0
+    expandSeconds = expandSeconds + (time - last);
+    expandSeconds = expandSeconds % ((math.pi * 2) / (m.expandperiod + 1));
+    last = time
+	    local fExpandMultiplier = scale(math.cos(expandSeconds * 3 * (m.expandperiod + 1)), -1, 1, 0.75, 1.75);
+      fScrollSpeed = fScrollSpeed * scale(m.expand, 0, 1, 1, fExpandMultiplier);
+	end
+	if m.tanexpand ~= 0 then
+	local last = 0
+	local time = getSongPosition() / 1000
+	local tanExpandSeconds = 0
+    tanExpandSeconds = tanExpandSeconds + (time - last);
+    tanExpandSeconds = tanExpandSeconds % ((math.pi * 2) / (m.tanexpandperiod + 1));
+    last = time
+	    local fTanExpandMultiplier = scale(selectTanType(tanExpandSeconds * 3 * (m.tanexpandperiod + 1),m.cosecant), -1, 1, 0.75, 1.75);
+      fScrollSpeed = fScrollSpeed * scale(m.tanexpand, 0, 1, 1, fTanExpandMultiplier);
+	end
+	fYOffset = fYOffset * fScrollSpeed
 	return fYOffset
 end
 
@@ -1353,7 +1379,7 @@ function onCreatePost()
 end
 function init()
 	--WRITE MODS HERE!
-	set{0,1,"tornado"}
+	set{0,1,"tanexpand"}
 end
 function onSongStart()
     
