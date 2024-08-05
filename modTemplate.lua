@@ -540,6 +540,7 @@ modList = {
 	swap = 0,
 	parabolax = 0,
 	parabolay = 0,
+	tornado = 0,
 	scale = 0,
 	zoom = 0,
 	scalex = 0,
@@ -573,8 +574,6 @@ modList = {
 	brake = 0,
 	boost = 0,
 	boomerang = 0,
-	expand = 0,
-	expandperiod = 0,
 	hidden = 0,
 	hiddenoffset = 0,
 	sudden = 0,
@@ -1033,7 +1032,7 @@ function arrowEffects(fYOffset, iCol, pn)
 
 	if m.tiny ~= 0 then
 		local fTinyPercent = m.tiny
-		fTinyPercent = math.min( math.pow(0.5, fTinyPercent), 1 );
+		fTinyPercent = math.min( math.pow(0.5, fTinyPercent), 1.0 );
 		xpos = xpos * fTinyPercent
 	end
 
@@ -1065,6 +1064,34 @@ function arrowEffects(fYOffset, iCol, pn)
     if m.attenuatey ~= 0 then
     local fXOffset =getPropertyFromGroup('strumLineNotes',(pn==2 and iCol+4 or iCol),"x")
     ypos = ypos +m.attenuatey * (fYOffset / ARROW_SIZE) * (fYOffset / ARROW_SIZE) * (fXOffset / ARROW_SIZE);
+    end
+    if m.tornado ~= 0 then
+		local iTornadoWidth = 2
+
+		local iStartCol = iCol - iTornadoWidth;
+		local iEndCol = iCol + iTornadoWidth;
+		iStartCol = math.clamp( iStartCol, 0, 4-1 );
+		iEndCol = math.clamp( iEndCol, 0, 4-1 );
+
+		local fMinX = 3.402823466*(10^38)
+		local fMaxX = 1.175494351*(10^-38)
+		
+		-- TODO: Don't index by PlayerNumber.
+
+		for i=iStartCol,iEndCol do
+		
+			fMinX = math.min( fMinX, getPropertyFromGroup('strumLineNotes',(pn==2 and i+4 or i),"x") );
+			fMaxX = math.max( fMaxX, getPropertyFromGroup('strumLineNotes',(pn==2 and i+4 or i),"x") );
+	end
+
+		local fRealPixelOffset = getPropertyFromGroup('strumLineNotes',(pn==2 and iCol+4 or iCol),"x")
+		local fPositionBetween = scale( fRealPixelOffset, fMinX, fMaxX, -1, 1 );
+		local fRads = math.acos( fPositionBetween );
+		fRads = fRads + (fYOffset * 6 / screenHeight)
+		
+		local fAdjustedPixelOffset = scale( math.cos(fRads), -1, 1, fMinX, fMaxX );
+
+		xpos = xpos + (fAdjustedPixelOffset - fRealPixelOffset) * m.tornado
     end
     return xpos, ypos, rotz, zpos
     
@@ -1279,7 +1306,7 @@ setPropertyFromGroup("strumLineNotes",c,"scale.y",getPropertyFromGroup("strumLin
 				
 				local off = (1 - 2*getReverseForCol(col,pn))
 
-				local ypos = getYAdjust(defaulty - (getSongPosition() - targTime),col,pn) * scrollSpeeds * 0.45 - off + ARROW_SIZE / 2
+				local ypos = getYAdjust(defaulty - (getSongPosition() - targTime),col,pn) * scrollSpeeds * 0.45 - off + ARROW_SIZE / 4
 					local zoom = getZoom(ypos-defaulty,col,pn)
 				local xa, ya, rz, za = arrowEffects(ypos-defaulty, col, pn)
 				local alp = arrowAlpha(ypos-defaulty, col, pn)
@@ -1326,6 +1353,7 @@ function onCreatePost()
 end
 function init()
 	--WRITE MODS HERE!
+	set{0,1,"tornado"}
 end
 function onSongStart()
     
