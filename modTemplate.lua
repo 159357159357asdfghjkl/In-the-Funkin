@@ -590,6 +590,10 @@ modList = {
 	camwag = 0,
 	xmod = 1, --scrollSpeed
 	cosecant = 0,
+	wiggle = 0,
+	shake = 0,
+	shakespeed = 0,
+	randomshake = 0,
 }
 
 --column specific mods
@@ -1119,6 +1123,20 @@ function arrowEffects(fYOffset, iCol, pn)
 
 		xpos = xpos + (fAdjustedPixelOffset - fRealPixelOffset) * m.tornado
     end
+    if m.wiggle ~= 0 then
+        local multIn = iCol%4 <= 1 and -1 or 1
+        xpos =xpos+math.pow(math.max((fYOffset*0.01)-1, 0)*m.wiggle, 2) * multIn
+    end
+
+    if m.shake ~= 0 then
+        xpos = xpos+math.sin(500)+m.shake * (math.cos(getSongPosition()*4*0.2) + ((iCol%4)*0.2) - 0.002)* (math.sin(100 - (120 * (1+m.shakespeed) * 0.4)))*ARROW_SIZE/100
+        ypos = ypos+math.sin(500)+m.shake * (math.cos(getSongPosition() * 8*0.2) + ((iCol%4)*0.2) - 0.002)* (math.sin(100 - (120 * (1+m.shakespeed) * 0.4)))*ARROW_SIZE/100
+    end
+    if m.randomshake ~=0 then
+        xpos = xpos+math.sin(0.1)*(m.randomshake * getRandomInt(1, 20));
+        ypos = ypos+math.sin(0.1)*(m.randomshake * getRandomInt(1, 20));
+    end
+
     return xpos, ypos, rotz, zpos
     
 end
@@ -1379,7 +1397,7 @@ function onCreatePost()
 end
 function init()
 	--WRITE MODS HERE!
-	set{0,1,"tanexpand"}
+	--set{0,3,""}
 end
 function onSongStart()
     
