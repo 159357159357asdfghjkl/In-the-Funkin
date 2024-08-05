@@ -594,6 +594,7 @@ modList = {
 	shake = 0,
 	shakespeed = 0,
 	randomshake = 0,
+	jump = 0,
 }
 
 --column specific mods
@@ -1136,6 +1137,12 @@ function arrowEffects(fYOffset, iCol, pn)
         xpos = xpos+math.sin(0.1)*(m.randomshake * getRandomInt(1, 20));
         ypos = ypos+math.sin(0.1)*(m.randomshake * getRandomInt(1, 20));
     end
+    if m.jump ~= 0 then
+        local beatVal = beat - math.floor(beat);
+
+        local scrollSwitch = downscroll and -1 or 1
+        ypos=ypos+ (beatVal*(stepCrochet*m.jump))*scrollSpeed*0.45*scrollSwitch;
+    end
 
     return xpos, ypos, rotz, zpos
     
@@ -1397,7 +1404,7 @@ function onCreatePost()
 end
 function init()
 	--WRITE MODS HERE!
-	--set{0,3,""}
+	set{0,3,"jump"}
 end
 function onSongStart()
     
