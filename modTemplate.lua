@@ -543,6 +543,7 @@ modList = {
 	tornado = 0,
 	scale = 0,
 	zoom = 0,
+	big = 0,
 	scalex = 0,
 	scaley = 0,
 	squish = 0,
@@ -849,8 +850,8 @@ function getScale(fYOffset, iCol, pn, sx, sy)
     local x = sx
     local y = sy
     local m = activeMods[pn]
-    x = x + m.scalex + m['scalex'..iCol] + m.scale + m['scale'..iCol] 
-    y = y + m.scaley + m['scaley'..iCol] + m.scale + m['scale'..iCol] 
+    x = x + m.scalex + m['scalex'..iCol] + m.scale + m['scale'..iCol] + m.big
+    y = y + m.scaley + m['scaley'..iCol] + m.scale + m['scale'..iCol] + m.big
     local angle = 0;
     local stretch = m.stretch + m['stretch'..iCol]
     local squish = m.squish + m['squish'..iCol]
@@ -1037,7 +1038,6 @@ function arrowEffects(fYOffset, iCol, pn)
 	if m.digital ~= 0 then
 		xpos = xpos + (m.digital * ARROW_SIZE * 0.5) * round((m.digitalsteps+1) * math.sin(math.pi * (fYOffset + (1.0 * m.digitaloffset ) ) / (ARROW_SIZE + (m.digitalperiod * ARROW_SIZE) )) )/(m.digitalsteps+1);
 	end
-
 	if m.bumpyx ~= 0 then
 		xpos = xpos + m.bumpyx * 40*math.sin((fYOffset+(100.0*m.bumpyxoffset))/((m.bumpyxperiod*16.0)+16.0));
 	end
@@ -1314,14 +1314,31 @@ function TEMPLATE.update(elapsed)
                 setPropertyFromGroup("strumLineNotes",c,"alpha",alp)
 
 			local scalex, scaley = getScale(0, col, pn, defaultscale[c+1].x, defaultscale[c+1].y)
-    setPropertyFromGroup("strumLineNotes",c,"scale.x",scalex)
-    setPropertyFromGroup("strumLineNotes",c,"scale.y",scaley)
+    --setPropertyFromGroup("strumLineNotes",c,"scale.x",scalex)
+    --setPropertyFromGroup("strumLineNotes",c,"scale.y",scaley)
 
+	local zNear,zFar = 0,100
+	local zRange = zNear - zFar
+	local fov = 90
+	local tanHalfFOV = math.tan(math.rad(fov/2))
+
+	local strum = c < 4 and "defaultOpponentStrum" or "defaultPlayerStrum"
+			local pos={x=_G[strum..'X'..c%4]+xp - (screenWidth/2),y=_G[strum..'Y'..c%4]+yp - (screenHeight/2),z=zp/1000-1}
+			pos.x=pos.x+xp
+			pos.y=pos.y+yp
+			local X = pos.x*(1/tanHalfFOV)/-pos.z+(screenWidth/2)
+			local Y = pos.y/(1/tanHalfFOV)/-pos.z+(screenHeight/2)
+			setPropertyFromGroup('strumLineNotes', c, 'x', X)
+			setPropertyFromGroup('strumLineNotes', c, 'y', Y)
+
+			local scale = -pos.z
+			scale = 1 / scale
+setPropertyFromGroup('strumLineNotes', c, 'scale.x', scalex * scale)
+			setPropertyFromGroup('strumLineNotes', c, 'scale.y', scaley * scale)
     local zoom = getZoom(0,col,pn)
 
 setPropertyFromGroup("strumLineNotes",c,"scale.x",getPropertyFromGroup("strumLineNotes",c,"scale.x")*zoom)
 setPropertyFromGroup("strumLineNotes",c,"scale.y",getPropertyFromGroup("strumLineNotes",c,"scale.y")*zoom)
-		
 			
 				--local scrollSpeed = xmod * activeMods[pn]['xmod'..col] * (1 - 2*getReverseForCol(col,pn))
 				--setLaneScrollspeed(c,scrollSpeed)
@@ -1368,7 +1385,7 @@ setPropertyFromGroup("strumLineNotes",c,"scale.y",getPropertyFromGroup("strumLin
 					local xa2, ya2 = arrowEffects(ypos2-defaulty, col, pn)
 
 					--if scrollSpeed >= 0 then
-					setPropertyFromGroup("notes",v,"angle",math.deg(math.atan2(((ypos2 + ya2)-(ypos + ya))*100,(xa2-xa)*100) + math.pi/2))
+				setPropertyFromGroup("notes",v,"angle",math.deg(math.atan2(((ypos2 + ya2)-(ypos + ya))*100,(xa2-xa)*100) + math.pi/2))
 					--else
 					--	note.angle = 180+math.deg(math.atan2(((ypos2 + ya2)-(ypos + ya))*100,(xa2-xa)*100) + math.pi/2)
 					--end
@@ -1378,16 +1395,42 @@ setPropertyFromGroup("strumLineNotes",c,"scale.y",getPropertyFromGroup("strumLin
             	setPropertyFromGroup("notes",v,"x",defaultx + xa + (getPropertyFromGroup('notes',v,"isSustainNote") and 35 or 0))
             	setPropertyFromGroup("notes",v,"y",ypos + ya + (getPropertyFromGroup('notes',v,"isSustainNote") and 35 or 0))
             	setPropertyFromGroup("notes",v,"alpha",alp)
-    setPropertyFromGroup("notes",v,"scale.x",scalex)
-    setPropertyFromGroup("notes",v,"scale.y",(getPropertyFromGroup('notes',v,"isSustainNote") and 1 or scaley))		
+    --setPropertyFromGroup("notes",v,"scale.x",scalex)
+
+    --setPropertyFromGroup("notes",v,"scale.y",getPropertyFromGroup('notes',v,"isSustainNote") and 1 or scaley)
+    
+    local off=(getPropertyFromGroup('notes',v,"isSustainNote") and 35 or 0)
+    local zNear,zFar = 0,100
+	local zRange = zNear - zFar
+	local fov = 90
+	local tanHalfFOV = math.tan(math.rad(fov/2))
+
+	local strum = c < 4 and "defaultOpponentStrum" or "defaultPlayerStrum"
+			local pos={x=_G[strum..'X'..c%4]+off - (screenWidth/2),y= ypos+off - (screenHeight/2),z=za/1000-1}
+			pos.x=pos.x+xa
+			pos.y=pos.y+ya
+			local X = pos.x*(1/tanHalfFOV)/-pos.z+(screenWidth/2)
+			local Y = pos.y/(1/tanHalfFOV)/-pos.z+(screenHeight/2)
+			setPropertyFromGroup('notes', v, 'x', X)
+			setPropertyFromGroup('notes', v, 'y', Y)
+
+			local scale = -pos.z
+			scale = 1 / scale
+			local scalenewy=getPropertyFromGroup('notes',v,"isSustainNote") and 1 or scaley
+setPropertyFromGroup('notes', v, 'scale.x', scalex * scale)
+			setPropertyFromGroup('notes', v, 'scale.y', scalenewy * scale)
+			
 setPropertyFromGroup("notes",v,"scale.x",(getPropertyFromGroup('notes',v,"scale.x")*zoom))
-            	setPropertyFromGroup("notes",v,"scale.y",(getPropertyFromGroup('notes',v,"scale.y")*zoom))
+
+  setPropertyFromGroup("notes",v,"scale.y",(getPropertyFromGroup('notes',v,"scale.y")*(getPropertyFromGroup('notes',v,"isSustainNote") and 1 or zoom)))
+  
+  
 			end
 			
 		end
 		
 	end
-
+	
 end
 
 
@@ -1404,7 +1447,6 @@ function onCreatePost()
 end
 function init()
 	--WRITE MODS HERE!
-	set{0,3,"jump"}
 end
 function onSongStart()
     
