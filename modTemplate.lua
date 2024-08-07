@@ -461,6 +461,7 @@ function quantize(f,interval)
 return int((f+interval/2)/interval)*interval;
 end
 
+
 function selectTanType(angle,is_csc)
 if is_csc ~= 0 then
 return fastCsc(angle)
@@ -990,7 +991,7 @@ function arrowEffects(fYOffset, iCol, pn)
 	end
 	
 	if m['reverse'..iCol] ~= 0 or m.reverse ~= 0 or m.split ~= 0 or m.cross ~= 0 or m.alternate ~= 0 or m.centered ~= 0 then
-		ypos = ypos + getReverseForCol(iCol,pn) * 520
+		ypos = ypos + getReverseForCol(iCol,pn) * 450
 	end
 	
 	if m.flip ~= 0 then
@@ -1498,8 +1499,6 @@ function TEMPLATE.update(elapsed)
 
 	local strum = c < 4 and "defaultOpponentStrum" or "defaultPlayerStrum"
 			local pos={x=_G[strum..'X'..c%4]+xp - (screenWidth/2),y=_G[strum..'Y'..c%4]+yp - (screenHeight/2),z=zp/1000-1}
-			pos.x=pos.x+xp
-			pos.y=pos.y+yp
 			local X = pos.x*(1/tanHalfFOV)/-pos.z+(screenWidth/2)
 			local Y = pos.y/(1/tanHalfFOV)/-pos.z+(screenHeight/2)
 			setPropertyFromGroup('strumLineNotes', c, 'x', X)
@@ -1569,10 +1568,7 @@ setPropertyFromGroup("strumLineNotes",c,"scale.y",getPropertyFromGroup("strumLin
             	setPropertyFromGroup("notes",v,"x",defaultx + xa + (getPropertyFromGroup('notes',v,"isSustainNote") and 35 or 0))
             	setPropertyFromGroup("notes",v,"y",ypos + ya + (getPropertyFromGroup('notes',v,"isSustainNote") and 35 or 0))
             	setPropertyFromGroup("notes",v,"alpha",alp)
-    --setPropertyFromGroup("notes",v,"scale.x",scalex)
 
-    --setPropertyFromGroup("notes",v,"scale.y",getPropertyFromGroup('notes',v,"isSustainNote") and 1 or scaley)
-    
     local off=(getPropertyFromGroup('notes',v,"isSustainNote") and 35 or 0)
     local zNear,zFar = 0,100
 	local zRange = zNear - zFar
@@ -1580,9 +1576,7 @@ setPropertyFromGroup("strumLineNotes",c,"scale.y",getPropertyFromGroup("strumLin
 	local tanHalfFOV = math.tan(math.rad(fov/2))
 
 	local strum = c < 4 and "defaultOpponentStrum" or "defaultPlayerStrum"
-			local pos={x=_G[strum..'X'..c%4]+off - (screenWidth/2),y= ypos+off - (screenHeight/2),z=za/1000-1}
-			pos.x=pos.x+xa
-			pos.y=pos.y+ya
+			local pos={x=_G[strum..'X'..c%4]+xa+off - (screenWidth/2),y= ypos+off+ya - (screenHeight/2),z=za/1000-1}
 			local X = pos.x*(1/tanHalfFOV)/-pos.z+(screenWidth/2)
 			local Y = pos.y/(1/tanHalfFOV)/-pos.z+(screenHeight/2)
 			setPropertyFromGroup('notes', v, 'x', X)
@@ -1621,7 +1615,7 @@ function onCreatePost()
 end
 function init()
 	--WRITE MODS HERE!
-	--set{0,1,"tipsyz"}
+	set{0,1,"beat"}
 end
 function onSongStart()
     
