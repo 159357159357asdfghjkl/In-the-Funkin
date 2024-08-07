@@ -521,6 +521,10 @@ modList = {
 	digitalsteps = 0,
 	digitaloffset = 0,
 	digitalperiod = 0,
+	tandigital = 0,
+	tandigitalsteps = 0,
+	tandigitaloffset = 0,
+	tandigitalperiod = 0,
 	square = 0,
 	squareoffset = 0,
 	squareperiod = 0,
@@ -596,6 +600,49 @@ modList = {
 	shakespeed = 0,
 	randomshake = 0,
 	jump = 0,
+	bumpy = 0,
+	bumpyoffset = 0,
+	bumpyperiod = 0,
+	tanbumpy = 0,
+	tanbumpyoffset = 0,
+	tanbumpyperiod = 0,
+	attenuatez = 0,
+	tornadoz = 0,
+	parabolaz = 0,
+	sawtoothz = 0,
+	sawtoothzperiod = 0,
+	squarez = 0,
+	squarezoffset = 0,
+	squarezperiod = 0,
+	bouncez = 0,
+	bouncezoffset = 0,
+	bouncezperiod = 0,
+	digitalz = 0,
+	digitalzsteps = 0,
+	digitalzoffset = 0,
+	digitalzperiod = 0,
+	tandigitalz = 0,
+	tandigitalzsteps = 0,
+	tandigitalzoffset = 0,
+	tandigitalzperiod = 0,
+	zigzagz = 0,
+	zigzagzoffset = 0,
+	zigzagzperiod = 0,
+	beatz = 0,
+	drunkz = 0,
+	drunkzspeed = 0,
+	drunkzoffset = 0,
+	drunkzperiod = 0,
+	tandrunkz = 0,
+	tandrunkzspeed = 0,
+	tandrunkzoffset = 0,
+	tandrunkzperiod = 0,
+	tipsyz = 0,
+	tipsyzspeed = 0,
+	tipsyzoffset = 0,
+	tantipsyz = 0,
+	tantipsyzspeed = 0,
+	tantipsyzoffset = 0,
 }
 
 --column specific mods
@@ -617,6 +664,7 @@ for i=0,3 do
 	modList['scaley'..i] = 0
 	modList['squish'..i] = 0
 	modList['stretch'..i] = 0
+	modList['bumpy'..i] = 0
 	modList['xmod'..i] = 1 --column specific scrollSpeed multiplier
 end
 
@@ -882,11 +930,17 @@ function arrowEffects(fYOffset, iCol, pn)
     if m.drunk ~= 0 then
         xpos = xpos + m.drunk * math.cos(getSongPosition()*0.001 * (1 + m.drunkspeed) + iCol * ((m.drunkoffset * 0.2) + 0.2) + fYOffset * ((m.drunkperiod * 10) + 10) / screenHeight) * ARROW_SIZE * 0.5;
     end
+    if m.drunkz ~= 0 then
+        zpos = zpos + m.drunkz * math.cos(getSongPosition()*0.001 * (1 + m.drunkzspeed) + iCol * ((m.drunkzoffset * 0.2) + 0.2) + fYOffset * ((m.drunkzperiod * 10) + 10) / screenHeight) * ARROW_SIZE * 0.5;
+    end
     if m.drunky ~= 0 then
         ypos = ypos + m.drunky * math.cos(getSongPosition()*0.001 * (1 + m.drunkyspeed) + iCol * ((m.drunkyoffset * 0.2) + 0.2) + fYOffset * ((m.drunkyperiod * 10) + 10) / screenHeight) * ARROW_SIZE * 0.5;
     end
     if m.tandrunk ~= 0 then
     xpos = xpos + m.tandrunk * selectTanType(getSongPosition()*0.001 * (1 + m.tandrunkspeed) + iCol * ((m.tandrunkoffset * 0.2) + 0.2) + fYOffset * ((m.tandrunkperiod * 10) + 10) / screenHeight,m.cosecant) * ARROW_SIZE * 0.5;
+    end
+    if m.tandrunkz ~= 0 then
+    zpos = zpos + m.tandrunkz * selectTanType(getSongPosition()*0.001 * (1 + m.tandrunkzspeed) + iCol * ((m.tandrunkzoffset * 0.2) + 0.2) + fYOffset * ((m.tandrunkzperiod * 10) + 10) / screenHeight,m.cosecant) * ARROW_SIZE * 0.5;
     end
     if m.tandrunky ~= 0 then
     ypos = ypos + m.tandrunky * selectTanType(getSongPosition()*0.001 * (1 + m.tandrunkyspeed) + iCol * ((m.tandrunkyoffset * 0.2) + 0.2) + fYOffset * ((m.tandrunkyperiod * 10) + 10) / screenHeight,m.cosecant) * ARROW_SIZE * 0.5;
@@ -896,6 +950,12 @@ function arrowEffects(fYOffset, iCol, pn)
     end
     if m.tantipsy ~= 0 then
         ypos = ypos + m.tantipsy * selectTanType( getSongPosition() * 0.001 * ((m.tantipsyspeed * 1.2) + 1.2) + (iCol * ((m.tantipsyoffset * 1.8) + 1.8)),m.cosecant)* ARROW_SIZE * 0.4
+    end
+    if m.tipsyz ~= 0 then
+        zpos = zpos + m.tipsyz * math.cos( getSongPosition() * 0.001 * ((m.tipsyzspeed * 1.2) + 1.2) + (iCol * ((m.tipsyzoffset * 1.8) + 1.8)))* ARROW_SIZE * 0.4
+    end
+    if m.tantipsyz ~= 0 then
+        zpos = zpos + m.tantipsyz * selectTanType( getSongPosition() * 0.001 * ((m.tantipsyzspeed * 1.2) + 1.2) + (iCol * ((m.tantipsyzoffset * 1.8) + 1.8)),m.cosecant)* ARROW_SIZE * 0.4
     end
     if m.tipsyx ~= 0 then
         xpos = xpos + m.tipsyx * math.cos( getSongPosition() * 0.001 * ((m.tipsyxspeed * 1.2) + 1.2) + (iCol * ((m.tipsyxoffset * 1.8) + 1.8))) * ARROW_SIZE * 0.4
@@ -1038,6 +1098,9 @@ function arrowEffects(fYOffset, iCol, pn)
 	if m.digital ~= 0 then
 		xpos = xpos + (m.digital * ARROW_SIZE * 0.5) * round((m.digitalsteps+1) * math.sin(math.pi * (fYOffset + (1.0 * m.digitaloffset ) ) / (ARROW_SIZE + (m.digitalperiod * ARROW_SIZE) )) )/(m.digitalsteps+1);
 	end
+	if m.tandigital ~= 0 then
+		xpos = xpos + (m.tandigital * ARROW_SIZE * 0.5) * round((m.tandigitalsteps+1) * selectTanType(math.pi * (fYOffset + (1.0 * m.tandigitaloffset ) ) / (ARROW_SIZE + (m.tandigitalperiod * ARROW_SIZE) ),m.cosecant) )/(m.tandigitalsteps+1);
+	end
 	if m.bumpyx ~= 0 then
 		xpos = xpos + m.bumpyx * 40*math.sin((fYOffset+(100.0*m.bumpyxoffset))/((m.bumpyxperiod*16.0)+16.0));
 	end
@@ -1143,7 +1206,118 @@ function arrowEffects(fYOffset, iCol, pn)
         local scrollSwitch = downscroll and -1 or 1
         ypos=ypos+ (beatVal*(stepCrochet*m.jump))*scrollSpeed*0.45*scrollSwitch;
     end
+    if m.bumpy ~= 0 then
+		zpos = zpos + m.bumpy * 40*math.sin((fYOffset+(100.0*m.bumpyoffset))/((m.bumpyperiod*16.0)+16.0))
+    end
+	if m['bumpy'..iCol] ~= 0 then
+	    zpos = zpos + m['bumpy'..iCol] * 40*math.sin((fYOffset+(100.0*m.bumpyoffset))/((m.bumpyperiod*16.0)+16.0))
+	end
+	if m.tanbumpy ~= 0 then
+		zpos = zpos + m.tanbumpy * 40*selectTanType((fYOffset+(100.0*m.tanbumpyoffset))/((m.tanbumpyperiod*16.0)+16.0),m.cosecant)
+    end
+    if m.attenuatez ~= 0 then
+    local fXOffset =getPropertyFromGroup('strumLineNotes',(pn==2 and iCol+4 or iCol),"x")
+    zpos = zpos +m.attenuatez * (fYOffset / ARROW_SIZE) * (fYOffset / ARROW_SIZE) * (fXOffset / ARROW_SIZE);
+    end
+    if m.tornadoz ~= 0 then
+		local iTornadoWidth = 2
 
+		local iStartCol = iCol - iTornadoWidth;
+		local iEndCol = iCol + iTornadoWidth;
+		iStartCol = math.clamp( iStartCol, 0, 4-1 );
+		iEndCol = math.clamp( iEndCol, 0, 4-1 );
+
+		local fMinX = 3.402823466*(10^38)
+		local fMaxX = 1.175494351*(10^-38)
+		
+		-- TODO: Don't index by PlayerNumber.
+
+		for i=iStartCol,iEndCol do
+		
+			fMinX = math.min( fMinX, getPropertyFromGroup('strumLineNotes',(pn==2 and i+4 or i),"x") );
+			fMaxX = math.max( fMaxX, getPropertyFromGroup('strumLineNotes',(pn==2 and i+4 or i),"x") );
+	end
+
+		local fRealPixelOffset = getPropertyFromGroup('strumLineNotes',(pn==2 and iCol+4 or iCol),"x")
+		local fPositionBetween = scale( fRealPixelOffset, fMinX, fMaxX, -1, 1 );
+		local fRads = math.acos( fPositionBetween );
+		fRads = fRads + (fYOffset * 6 / screenHeight)
+		
+		local fAdjustedPixelOffset = scale( math.cos(fRads), -1, 1, fMinX, fMaxX );
+
+		zpos = zpos + (fAdjustedPixelOffset - fRealPixelOffset) * m.tornadoz
+    end
+    if m.parabolaz ~= 0 then
+        zpos = zpos + m.parabolaz * (fYOffset / ARROW_SIZE) * (fYOffset / ARROW_SIZE)
+    end
+	if m.sawtoothz ~= 0 then
+		zpos = zpos + (m.sawtoothz*ARROW_SIZE) * ((0.5 / (m.sawtoothzperiod+1) * fYOffset) / ARROW_SIZE - math.floor((0.5 / (m.sawtoothzperiod+1) * fYOffset) / ARROW_SIZE) );
+	end
+
+	if m.digitalz ~= 0 then
+		zpos = zpos + (m.digitalz * ARROW_SIZE * 0.5) * round((m.digitalzsteps+1) * math.sin(math.pi * (fYOffset + (1.0 * m.digitalzoffset ) ) / (ARROW_SIZE + (m.digitalzperiod * ARROW_SIZE) )) )/(m.digitalzsteps+1);
+	end
+	if m.tandigitalz ~= 0 then
+		zpos = zpos + (m.tandigitalz * ARROW_SIZE * 0.5) * round((m.tandigitalzsteps+1) * selectTanType(math.pi * (fYOffset + (1.0 * m.tandigitalzoffset ) ) / (ARROW_SIZE + (m.tandigitalzperiod * ARROW_SIZE) ),m.cosecant) )/(m.tandigitalzsteps+1);
+	end
+	if m.squarez ~= 0 then
+		local fResult = square( (math.pi * (fYOffset+(1.0*(m.squarezoffset))) / (ARROW_SIZE+(m.squarezperiod*ARROW_SIZE))) );
+		zpos = zpos + (m.squarez * ARROW_SIZE * 0.5) * fResult;
+	end
+
+	if m.bouncez ~= 0 then
+		local fBounceAmt = math.abs( math.sin( ( (fYOffset + (1.0 * (m.bouncezoffset) ) ) / ( 60 + m.bouncezperiod*60) ) ) );
+		zpos = zpos + m.bouncez * ARROW_SIZE * 0.5 * fBounceAmt;
+	end
+
+	if m.zigzagz ~= 0 then
+		local fResult = triangle( (math.pi * (1/(m.zigzagzperiod+1)) * ((fYOffset+(100.0*(m.zigzagzoffset)))/ARROW_SIZE) ) );
+	    
+		zpos = zpos + (m.zigzagz*ARROW_SIZE/2) * fResult;
+	end
+	if m.beatz ~= 0 then
+			
+		local fBeatStrength = m.beatz;
+		
+		local fAccelTime = 0.3;
+		local fTotalTime = 0.7;
+		
+		-- If the song is really fast, slow down the rate, but speed up the
+		-- acceleration to compensate or it'll look weird.
+		fBeat = beat + fAccelTime;
+		
+		local bEvenBeat = false;
+		if math.floor(fBeat) % 2 ~= 0 then
+			bEvenBeat = true;
+		end
+		
+		fBeat = fBeat-math.floor( fBeat );
+		fBeat = fBeat+1;
+		fBeat = fBeat-math.floor( fBeat );
+		
+		if fBeat<fTotalTime then
+		
+			local fAmount = 0;
+			if fBeat < fAccelTime then
+				fAmount = scale( fBeat, 0.0, fAccelTime, 0.0, 1.0);
+				fAmount = fAmount*fAmount;
+			else 
+				--fBeat < fTotalTime
+				fAmount = scale( fBeat, fAccelTime, fTotalTime, 1.0, 0.0);
+				fAmount = 1 - (1-fAmount) * (1-fAmount);
+			end
+
+			if bEvenBeat then
+				fAmount = fAmount*-1;
+			end
+
+			local fShift = 40.0*fAmount*math.sin( ((fYOffset/30.0)) + (math.pi/2) );
+			
+			zpos = zpos + fBeatStrength * fShift
+			
+		end
+	
+	end
     return xpos, ypos, rotz, zpos
     
 end
@@ -1447,6 +1621,7 @@ function onCreatePost()
 end
 function init()
 	--WRITE MODS HERE!
+	--set{0,1,"tipsyz"}
 end
 function onSongStart()
     
