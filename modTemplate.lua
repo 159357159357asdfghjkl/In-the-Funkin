@@ -6,17 +6,10 @@ TEMPLATE = {}
 -- shoutouts to Kade for letting me do this
 
 -- PSYCH IMPROVED VERSION [README]
--- use dofile or addLuaScript to call the modchart template in order to write mods
--- use psych engine 0.7 or higher version
--- because of some reasons, i can't add some mods
--- i don't want to add offsets and periods to old mods
--- tips: if you feel uncomfortable about path mods, set other helper mods
--- <<<<<
--- if you want to try other mods, download my alt stuff:
--- https://github.com/159357159357asdfghjkl/troll-engine-but-more-modifiers-and-shit-freeplay
--- based on troll engine
--- >>>>>
--- <--Warning: DO NOT CHANGE ALL THE FUNCTIONS EXCEPT run()-->
+-- use psych engine version >= 0.7.1
+-- there are two callbacks:init,update
+-- write mods in init
+-- some stuffs were stolen from fnf modcharting tools
 
 -- EASING EQUATIONS
 
@@ -436,32 +429,66 @@ function square(angle)
 	local fAngle = angle % (math.pi * 2)
 		--Hack: This ensures the hold notes don't flicker right before they're hit.
 		if fAngle < 0.01 then
-		    fAngle = fAngle + math.pi * 2;
+		    fAngle = fAngle + math.pi * 2
 		end
 	return fAngle >= math.pi and -1.0 or 1.0;
 end
 
 function triangle( angle )
-	local fAngle= angle % math.pi * 2.0;
+	local fAngle= angle % math.pi * 2.0
 	if fAngle < 0.0 then
-		fAngle= fAngle+math.pi * 2.0;
+		fAngle= fAngle+math.pi * 2.0
 	end
-	local result= fAngle * (1 / math.pi);
+	local result= fAngle * (1 / math.pi)
 	if result < .5 then
-		return result * 2.0;
+		return result * 2.0
 	elseif result < 1.5 then
-		return 1.0 - ((result - .5) * 2.0);
+		return 1.0 - ((result - .5) * 2.0)
 	else
-		return -4.0 + (result * 2.0);
+		return -4.0 + (result * 2.0)
 	end
 	
 end
 
 function quantize(f,interval)
-return int((f+interval/2)/interval)*interval;
+return int((f+interval/2)/interval)*interval
 end
 
+function rotateXYZ( rX, rY, rZ )
+    local PI=math.pi
+	rX = rX*(PI/180)
+	rY = rY*(PI/180)
+	rZ = rZ*(PI/180)
 
+	local cX = math.cos(rX)
+	local sX = math.sin(rX)
+	local cY = math.cos(rY)
+	local sY = math.sin(rY)
+	local cZ = math.cos(rZ)
+	local sZ = math.sin(rZ)
+
+	 return {
+	 	m00=cZ*cY, m01=cZ*sY*sX+sZ*cX, m02=cZ*sY*cX+sZ*(-sX), m03=0,
+	 	m10=(-sZ)*cY, m11=(-sZ)*sY*sX+cZ*cX, m12=(-sZ)*sY*cX+cZ*(-sX), m13=0,
+	 	m20=-sY, m21=cY*sX, m22=cY*cX, m23=0,
+	 	m30=0, m31=0, m32=0, m33=1
+	  }
+end
+function fromEuler(roll, pitch, yaw)
+local rad = math.pi/180
+local cr = math.cos(roll * rad);
+local sr = math.sin(roll * rad);
+local cp = math.cos(pitch * rad);
+local sp = math.sin(pitch * rad);
+local cy = math.cos(yaw * rad);
+local sy = math.sin(yaw * rad);
+local q= {x=0, y=0, z=0, w=0 }
+q.w = cr * cp * cy + sr * sp * sy;
+q.x = sr * cp * cy - cr * sp * sy;
+q.y = cr * sp * cy + sr * cp * sy;
+q.z = cr * cp * sy - sr * sp * cy;
+return q;
+end
 function selectTanType(angle,is_csc)
 if is_csc ~= 0 then
 return fastCsc(angle)
@@ -515,6 +542,9 @@ modList = {
 	bumpyx = 0,
 	bumpyxoffset = 0,
 	bumpyxperiod = 0,
+	bumpyy = 0,
+	bumpyyoffset = 0,
+	bumpyyperiod = 0,
 	beaty = 0,
 	sawtooth = 0,
 	sawtoothperiod = 0,
@@ -577,6 +607,7 @@ modList = {
 	confusion = 0,
 	dizzy = 0,
 	wave = 0,
+	waveperiod = 0,
 	brake = 0,
 	boost = 0,
 	boomerang = 0,
@@ -644,6 +675,16 @@ modList = {
 	tantipsyz = 0,
 	tantipsyzspeed = 0,
 	tantipsyzoffset = 0,
+	confusionx = 0,
+	confusionxoffset = 0,
+	confusiony = 0,
+	confusionyoffset = 0,
+	confusionoffset = 0,
+	twirl = 0,
+	roll = 0,
+	rotatex = 0,
+	rotatey = 0,
+	rotatez = 0
 }
 
 --column specific mods
@@ -657,6 +698,11 @@ for i=0,3 do
 	modList['dark'..i] = 0
 	modList['stealth'..i] = 0
 	modList['confusion'..i] = 0
+	modList['confusionx'..i] = 0
+	modList['confusionxoffset'..i] = 0
+	modList['confusiony'..i] = 0
+	modList['confusionyoffset'..i] = 0
+	modList['confusionoffset'..i] = 0
 	modList['reverse'..i] = 0
 	modList['tiny'..i] = 0
 	modList['scale'..i] = 0
@@ -806,7 +852,7 @@ function getYAdjust(fYOffset, iCol, pn)
 	local yadj = 0
 	local fScrollSpeed = 1
 	if m.wave ~= 0 then
-		yadj = yadj + m.wave * 20*math.sin( (fYOffset+250)/76 )
+		yadj =yadj + m.wave * 20 *math.sin( fYOffset/((m.waveperiod*38)+38) );
 	end
 	
 	if m.brake ~= 0 then
@@ -895,6 +941,136 @@ function getZoom(fYOffset, iCol, pn)
 	return fZoom
 end
 
+--im fucked
+function receptorRotation(fYOffset,iCol,pn)
+    local fRotationX, fRotationY, fRotationZ = 0, 0, 0
+    local m = activeMods[pn]
+    if m['confusionx'..iCol]~= 0 then
+		fRotationX = fRotationX +m['confusionx'..iCol] * 180.0/math.pi;
+	end
+	if m.confusionxoffset ~= 0 then
+		fRotationX = fRotationX +m.confusionxoffset * 180.0/math.pi;
+	end
+	if m['confusionxoffset'..iCol] ~= 0 then
+		fRotationX = fRotationX +m['confusionxoffset'..iCol] * 180.0/math.pi;
+	end
+	if m.confusionx ~= 0 then
+		local fConfRotation = beat
+		local PI = math.pi
+		fConfRotation = fConfRotation * m.confusionx
+		fConfRotation = fConfRotation % ( 2*PI )
+		fConfRotation = fConfRotation*(-180/PI)
+		fRotationX = fRotationX + fConfRotation;
+	end
+	if m['confusiony'..iCol] ~= 0 then
+		fRotationY = fRotationY + (m['confusiony'..iCol] * 180.0/math.pi)
+	end
+	if m['confusionyoffset'..iCol] ~= 0 then
+		fRotationY = fRotationY + (m['confusionyoffset'..iCol] * 180.0/math.pi)
+	end
+	if m.confusionyoffset ~= 0 then
+		fRotationY = fRotationY + m.confusionyoffset * 180.0/math.pi
+	end
+	if m.confusiony ~= 0 then
+		local fConfRotation = beat
+		local PI=math.pi
+		fConfRotation = fConfRotation * m.confusiony
+		fConfRotation = fConfRotation%(2*PI )
+		fConfRotation = fConfRotation *(-180/PI)
+		fRotationY = fRotationY + fConfRotation
+	end
+	if m['confusion'..iCol] ~= 0 then
+		fRotationZ = fRotationZ+m['confusion'..iCol] * 180.0/math.pi
+	end
+	if m.confusionoffset ~= 0 then
+		fRotationZ = fRotationZ+m.confusionoffset * 180.0/math.pi
+	end
+	if m['confusionoffset'..iCol] ~= 0 then
+		fRotationZ = fRotationZ+m['confusionoffset'..iCol] * 180.0/math.pi
+	end
+	if m.confusion ~= 0 then
+		local fConfRotation = beat
+		local PI=math.pi
+		fConfRotation = fConfRotation * m.confusion
+		fConfRotation = fConfRotation%( 2*PI );
+		fConfRotation = fConfRotation*(-180/PI)
+		fRotationZ = fRotationZ*fConfRotation;
+	end
+    return fRotationX, fRotationY, fRotationZ
+end
+
+function arrowRotation(fYOffset,iCol,pn,noteBeat)
+    local fRotationX, fRotationY, fRotationZ = 0, 0, 0
+    local m = activeMods[pn]
+    if m['confusionx'..iCol]~= 0 then
+		fRotationX = fRotationX +m['confusionx'..iCol] * 180.0/math.pi;
+	end
+	if m.confusionxoffset ~= 0 then
+		fRotationX = fRotationX +confusionxoffset * 180.0/math.pi;
+	end
+	if m['confusionxoffset'..iCol] ~= 0 then
+		fRotationX = fRotationX +m['confusionxoffset'..iCol] * 180.0/math.pi;
+	end
+	if m.confusionx ~= 0 then
+		local fConfRotation = beat
+		fConfRotation = fConfRotation * m.confusionx
+		fConfRotation = fConfRotation % ( 2*PI )
+		fConfRotation = fConfRotation*(-180/PI)
+		fRotationX = fRotationX + fConfRotation;
+	end
+	if m.roll ~= 0 then
+		fRotationX = fRotationX + (m.roll * fYOffset/2)
+	end
+	if m['confusiony'..iCol] ~= 0 then
+		fRotationY = fRotationY + (m['confusiony'..iCol] * 180.0/math.pi)
+	end
+	if m['confusionyoffset'..iCol] ~= 0 then
+		fRotationY = fRotationY + (m['confusionyoffset'..iCol] * 180.0/math.pi)
+	end
+	if m.confusionyoffset ~= 0 then
+		fRotationY = fRotationY + m.confusionyoffset * 180.0/math.pi
+	end
+	if m.confusiony ~= 0 then
+		local fConfRotation = beat
+		local PI=math.pi
+		fConfRotation = fConfRotation * m.confusiony
+		fConfRotation = fConfRotation%(2*PI )
+		fConfRotation = fConfRotation *(-180/PI)
+		fRotationY = fRotationY + fConfRotation
+	end
+	if m.twirl ~= 0 then
+		fRotationY = fRotationY + (m.twirl * fYOffset/2)
+	end
+
+	if m.dizzy ~= 0 then
+	local fSongBeat = beat
+	local PI = math.pi
+	local fDizzyRotation = noteBeat - fSongBeat
+		fDizzyRotation = fDizzyRotation * m.dizzy
+		fDizzyRotation = fDizzyRotation % (2*PI)
+		fDizzyRotation = fDizzyRotation*(180/PI)
+		fRotationZ = fRotationZ+fDizzyRotation
+	end
+		if m['confusion'..iCol] ~= 0 then
+		fRotationZ = fRotationZ+m['confusion'..iCol] * 180.0/math.pi
+	end
+	if m.confusionoffset ~= 0 then
+		fRotationZ = fRotationZ+m.confusionoffset * 180.0/math.pi
+	end
+	if m['confusionoffset'..iCol] ~= 0 then
+		fRotationZ = fRotationZ+m['confusionoffset'..iCol] * 180.0/math.pi
+	end
+	if m.confusion ~= 0 then
+		local fConfRotation = beat
+		local PI=math.pi
+		fConfRotation = fConfRotation * m.confusion
+		fConfRotation = fConfRotation%( 2*PI );
+		fConfRotation = fConfRotation*(-180/PI)
+		fRotationZ = fRotationZ*fConfRotation;
+	end
+    return fRotationX, fRotationY, fRotationZ
+end
+
 function getScale(fYOffset, iCol, pn, sx, sy)
     local x = sx
     local y = sy
@@ -921,13 +1097,26 @@ function arrowEffects(fYOffset, iCol, pn)
 	
     local xpos, ypos, rotz, zpos = 0, 0, 0, 0
 	
-	if m['confusion'..iCol] ~= 0 or m.confusion ~= 0 then
+--[[	if m['confusion'..iCol] ~= 0 or m.confusion ~= 0 ~= 0 then
 		rotz = rotz + m['confusion'..iCol] + m.confusion
 	end
 	if m.dizzy ~= 0 then
 		rotz = rotz + m.dizzy*fYOffset
-	end
-	
+	end]]
+    if m.rotatex ~= 0 or m.rotatey~= 0 or m.rotatez ~= 0 then	
+    local laneShit = iCol%4;
+    local offsetThing = 0.5
+        if (iCol < 2) then
+            offsetThing = -0.5;
+            laneShit = iCol+1;
+        end
+    local distFromCenter = ((laneShit)-2)+offsetThing;
+    xpos = xpos-distFromCenter*ARROW_SIZE;
+    local q = fromEuler(90+m.rotatez, m.rotatex, (downscroll and m.rotatey or -m.rotatey))
+    xpos= xpos+q.x * distFromCenter*ARROW_SIZE;
+    ypos= ypos+q.y * distFromCenter*ARROW_SIZE;
+    zpos= zpos+q.z * distFromCenter*ARROW_SIZE;
+    end
     if m.drunk ~= 0 then
         xpos = xpos + m.drunk * math.cos(getSongPosition()*0.001 * (1 + m.drunkspeed) + iCol * ((m.drunkoffset * 0.2) + 0.2) + fYOffset * ((m.drunkperiod * 10) + 10) / screenHeight) * ARROW_SIZE * 0.5;
     end
@@ -1110,7 +1299,9 @@ function arrowEffects(fYOffset, iCol, pn)
 		local fResult = square( (math.pi * (fYOffset+(1.0*(m.squareoffset))) / (ARROW_SIZE+(m.squareperiod*ARROW_SIZE))) );
 		xpos = xpos + (m.square * ARROW_SIZE * 0.5) * fResult;
 	end
-
+    if m.bumpyy ~= 0 then
+		ypos = ypos + m.bumpyy * 40*math.sin((fYOffset+(100.0*m.bumpyyoffset))/((m.bumpyyperiod*16.0)+16.0));
+	end
 	if m.bounce ~= 0 then
 		local fBounceAmt = math.abs( math.sin( ( (fYOffset + (1.0 * (m.bounceoffset) ) ) / ( 60 + m.bounceperiod*60) ) ) );
 		xpos = xpos + m.bounce * ARROW_SIZE * 0.5 * fBounceAmt;
@@ -1319,6 +1510,7 @@ function arrowEffects(fYOffset, iCol, pn)
 		end
 	
 	end
+
     return xpos, ypos, rotz, zpos
     
 end
@@ -1376,7 +1568,7 @@ function TEMPLATE.songStart()
 	songStarted = true
 	
 end
-
+    
 function TEMPLATE.update(elapsed)
     beat = (getSongPosition() / 1000) * (curBpm/60)
 	
@@ -1483,14 +1675,23 @@ function TEMPLATE.update(elapsed)
 				--print('Areceptor '..c..' is '..tostring(receptor))
 			
 				local defaultx, defaulty = defaultPositions[c+1].x, defaultPositions[c+1].y
-				setPropertyFromGroup("strumLineNotes",c,"x",defaultx + xp)
+				
+	setPropertyFromGroup("strumLineNotes",c,"x",defaultx + xp)
                 setPropertyFromGroup("strumLineNotes",c,"y",defaulty + yp)
                 setPropertyFromGroup("strumLineNotes",c,"angle",rz)
                 setPropertyFromGroup("strumLineNotes",c,"alpha",alp)
-
+			--[[
+    local rotx,roty,rotz = receptorRotation(0,col,pn)
+    local rotation = rotateXYZ(rotx,roty,rotz)
+    local rX=rotation.m00+rotation.m10+rotation.m20+rotation.m30
+    local rY=rotation.m01+rotation.m11+rotation.m21+rotation.m31
+    local rZ=rotation.m02+rotation.m12+rotation.m22+rotation.m32
+    local rW=rotation.m03+rotation.m13+rotation.m23+rotation.m33
+    setPropertyFromGroup('strumLineNotes', c, 'x',getPropertyFromGroup('strumLineNotes', c, 'x')*(rX*-(screenWidth/screenHeight)))
+			setPropertyFromGroup('strumLineNotes', c, 'y', getPropertyFromGroup("strumLineNotes",c,"y")*rY)
+			zp=zp*rZ	]]
+			
 			local scalex, scaley = getScale(0, col, pn, defaultscale[c+1].x, defaultscale[c+1].y)
-    --setPropertyFromGroup("strumLineNotes",c,"scale.x",scalex)
-    --setPropertyFromGroup("strumLineNotes",c,"scale.y",scaley)
 
 	local zNear,zFar = 0,100
 	local zRange = zNear - zFar
@@ -1512,6 +1713,7 @@ setPropertyFromGroup('strumLineNotes', c, 'scale.x', scalex * scale)
 
 setPropertyFromGroup("strumLineNotes",c,"scale.x",getPropertyFromGroup("strumLineNotes",c,"scale.x")*zoom)
 setPropertyFromGroup("strumLineNotes",c,"scale.y",getPropertyFromGroup("strumLineNotes",c,"scale.y")*zoom)
+
 			
 				--local scrollSpeed = xmod * activeMods[pn]['xmod'..col] * (1 - 2*getReverseForCol(col,pn))
 				--setLaneScrollspeed(c,scrollSpeed)
@@ -1598,10 +1800,48 @@ setPropertyFromGroup("notes",v,"scale.x",(getPropertyFromGroup('notes',v,"scale.
 		end
 		
 	end
-	
+	update()
 end
-
-
+    function hide(t)
+		local bt,tpn = t[1],t.pn
+		for i=0,3 do
+			me{bt+i*.125-1,.5,outExpo,-70,'movey'..i,pn=tpn}
+			me{bt+i*.125-.5,1.25,inExpo,650,'movey'..i,pn=tpn}
+			set{bt+i*.125+1.75,1,'stealth',pn=tpn}
+			set{bt+i*.125+1.75,1,'dark',pn=tpn}
+		end
+	end
+	function unhide(t)
+		local bt,tpn = t[1],t.pn
+		for i=0,3 do
+			set{bt+i*.125-2,0,'stealth',pn=tpn}
+			set{bt+i*.125-2,0,'dark',pn=tpn}
+			me{bt+i*.125-2,1,outExpo,-70,'movey'..i,pn=tpn}
+			me{bt+i*.125-1,1,inExpo,50,'movey'..i,pn=tpn}
+			me{bt+i*.125-0,1.25,outElastic,0,'movey'..i,pn=tpn}
+		end
+	end
+	--wiggle(beat,num,div,ease,amt,mod)
+	function wig(t)
+		local b,num,div,ea,am,mo = t[1],t[2],t[3],t[4],t[5],t[6]
+		local f = 1
+		for i=0,num do
+			local smul = i==0 and 1 or 0
+			local emul = i==num and 0 or 1
+			
+			me{b+i*(1/div),1/div,ea,startVal = am*smul*f, am*emul*-f,mo,pn=t.pn}
+			
+			f = f*-1
+		end
+	end
+	--simple mod 2
+	function sm2(tab)
+		local b,len,eas,amt,mods,intime = tab[1],tab[2],tab[3],tab[4],tab[5],tab.intime
+		if not intime then intime = .1 end
+		if intime <= 0 then intime = .001 end
+		me{b-intime,intime,linear,amt,mods,pn=tab.pn}
+		me{b,len-intime,eas,0,mods,pn=tab.pn}
+	end
 function onCreatePost()
 	TEMPLATE.InitMods()
 
@@ -1613,10 +1853,7 @@ function onCreatePost()
 	TEMPLATE.setup()
 	
 end
-function init()
-	--WRITE MODS HERE!
-	set{0,1,"beat"}
-end
+
 function onSongStart()
     
     TEMPLATE.songStart()
@@ -1630,5 +1867,14 @@ end
 function onUpdatePost(elapsed)
 	TEMPLATE.update(elapsed)
 end
+
+--callbacks
+function init()
+
+end
+function update()
+luaDebugMode = true
+end
+--end callbacks
 
 return 0
