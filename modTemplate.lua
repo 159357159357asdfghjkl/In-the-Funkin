@@ -9,7 +9,7 @@ TEMPLATE = {}
 -- use psych engine version >= 0.7.1
 -- there are two callbacks:init,update
 -- write mods in init
--- some stuffs were stolen from fnf modcharting tools
+-- some stuffs were stolen from fnf modcharting tools and schmovin
 
 -- EASING EQUATIONS
 
@@ -621,6 +621,7 @@ modList = {
 	suddenoffset = 0,
 	alternate = 0,
 	inside = 0,
+	outside = 0,
 	camx = 0,
 	camy = 0,
 	rotationz = 0,
@@ -629,6 +630,7 @@ modList = {
 	cosecant = 0,
 	wiggle = 0,
 	shake = 0,
+	vibrate = 0,
 	shakespeed = 0,
 	randomshake = 0,
 	jump = 0,
@@ -675,6 +677,7 @@ modList = {
 	tantipsyz = 0,
 	tantipsyzspeed = 0,
 	tantipsyzoffset = 0,
+	--暂时用不了
 	confusionx = 0,
 	confusionxoffset = 0,
 	confusiony = 0,
@@ -682,9 +685,15 @@ modList = {
 	confusionoffset = 0,
 	twirl = 0,
 	roll = 0,
+	--
 	rotatex = 0,
 	rotatey = 0,
-	rotatez = 0
+	rotatez = 0,
+	sine = 0,
+	distortwiggle = 0,
+	distortwigglescratch = 0,
+	distortwiggleperiod = 0,
+	receptorscroll = 0,
 }
 
 --column specific mods
@@ -703,6 +712,9 @@ for i=0,3 do
 	modList['confusiony'..i] = 0
 	modList['confusionyoffset'..i] = 0
 	modList['confusionoffset'..i] = 0
+	modList['rotatex'..i] = 0
+	modList['rotatey'..i] = 0
+	modList['rotatez'..i] = 0
 	modList['reverse'..i] = 0
 	modList['tiny'..i] = 0
 	modList['scale'..i] = 0
@@ -1117,6 +1129,20 @@ function arrowEffects(fYOffset, iCol, pn)
     ypos= ypos+q.y * distFromCenter*ARROW_SIZE;
     zpos= zpos+q.z * distFromCenter*ARROW_SIZE;
     end
+    if m['rotatex'..iCol] ~= 0 or m['rotatey'..iCol] ~= 0 or m['rotatez'..iCol] ~= 0 then	
+    local laneShit = iCol%4;
+    local offsetThing = 0.5
+        if (iCol < 2) then
+            offsetThing = -0.5;
+            laneShit = iCol+1;
+        end
+    local distFromCenter = ((laneShit)-2)+offsetThing;
+    xpos = xpos-distFromCenter*ARROW_SIZE;
+    local q = fromEuler(90+m['rotatez'..iCol], m['rotatex'..iCol], (downscroll and m['rotatey'..iCol] or -m['rotatey'..iCol]))
+    xpos= xpos+q.x * distFromCenter*ARROW_SIZE;
+    ypos= ypos+q.y * distFromCenter*ARROW_SIZE;
+    zpos= zpos+q.z * distFromCenter*ARROW_SIZE;
+    end
     if m.drunk ~= 0 then
         xpos = xpos + m.drunk * math.cos(getSongPosition()*0.001 * (1 + m.drunkspeed) + iCol * ((m.drunkoffset * 0.2) + 0.2) + fYOffset * ((m.drunkperiod * 10) + 10) / screenHeight) * ARROW_SIZE * 0.5;
     end
@@ -1379,11 +1405,14 @@ function arrowEffects(fYOffset, iCol, pn)
 
 		xpos = xpos + (fAdjustedPixelOffset - fRealPixelOffset) * m.tornado
     end
-    if m.wiggle ~= 0 then
+    if m.outside ~= 0 then
         local multIn = iCol%4 <= 1 and -1 or 1
         xpos =xpos+math.pow(math.max((fYOffset*0.01)-1, 0)*m.wiggle, 2) * multIn
     end
-
+    if m.vibrate ~= 0 then
+		xpos = xpos + (math.random() - 0.5) * m.vibrate * 20;
+		ypos = ypos + (math.random() - 0.5) * m.vibrate * 20;
+    end
     if m.shake ~= 0 then
         xpos = xpos+math.sin(500)+m.shake * (math.cos(getSongPosition()*4*0.2) + ((iCol%4)*0.2) - 0.002)* (math.sin(100 - (120 * (1+m.shakespeed) * 0.4)))*ARROW_SIZE/100
         ypos = ypos+math.sin(500)+m.shake * (math.cos(getSongPosition() * 8*0.2) + ((iCol%4)*0.2) - 0.002)* (math.sin(100 - (120 * (1+m.shakespeed) * 0.4)))*ARROW_SIZE/100
@@ -1510,7 +1539,21 @@ function arrowEffects(fYOffset, iCol, pn)
 		end
 	
 	end
-
+	if m.sine ~= 0 then
+	local len=4
+		ypos = ypos+len * math.sin(len / 100.0 + beat * 2.0 * math.pi) * m.sine
+	end
+	if m.distortwiggle ~= 0 then
+	local y=getPropertyFromGroup('strumLineNotes',(pn==2 and iCol+4 or iCol),"y")+fYOffset
+		xpos = xpos + (math.sin(y / (200+m.distortwiggleperiod) + beat + m.distortwigglescratch) * m.distortwiggle * 20)
+	end
+	if m.wiggle ~= 0 then
+		xpos = xpos + math.sin(beat) * m.wiggle * 20;
+		ypos = ypos+ math.sin(beat + 1) *m.wiggle * 20;
+		if m.wiggle > 0 then
+		m.rotatez = math.sin(beat)*0.2*m.wiggle
+		end
+    end
     return xpos, ypos, rotz, zpos
     
 end
@@ -1680,16 +1723,16 @@ function TEMPLATE.update(elapsed)
                 setPropertyFromGroup("strumLineNotes",c,"y",defaulty + yp)
                 setPropertyFromGroup("strumLineNotes",c,"angle",rz)
                 setPropertyFromGroup("strumLineNotes",c,"alpha",alp)
-			--[[
+			
     local rotx,roty,rotz = receptorRotation(0,col,pn)
     local rotation = rotateXYZ(rotx,roty,rotz)
     local rX=rotation.m00+rotation.m10+rotation.m20+rotation.m30
     local rY=rotation.m01+rotation.m11+rotation.m21+rotation.m31
     local rZ=rotation.m02+rotation.m12+rotation.m22+rotation.m32
     local rW=rotation.m03+rotation.m13+rotation.m23+rotation.m33
-    setPropertyFromGroup('strumLineNotes', c, 'x',getPropertyFromGroup('strumLineNotes', c, 'x')*(rX*-(screenWidth/screenHeight)))
-			setPropertyFromGroup('strumLineNotes', c, 'y', getPropertyFromGroup("strumLineNotes",c,"y")*rY)
-			zp=zp*rZ	]]
+    setPropertyFromGroup('strumLineNotes', c, 'x',getPropertyFromGroup('strumLineNotes', c, 'x')*rX)
+	setPropertyFromGroup('strumLineNotes', c, 'y', getPropertyFromGroup("strumLineNotes",c,"y")*rY)
+			zp=zp*rZ
 			
 			local scalex, scaley = getScale(0, col, pn, defaultscale[c+1].x, defaultscale[c+1].y)
 
@@ -1767,7 +1810,7 @@ setPropertyFromGroup("strumLineNotes",c,"scale.y",getPropertyFromGroup("strumLin
 				else
 					setPropertyFromGroup("notes",v,"angle",rz)
 				end
-            	setPropertyFromGroup("notes",v,"x",defaultx + xa + (getPropertyFromGroup('notes',v,"isSustainNote") and 35 or 0))
+                setPropertyFromGroup("notes",v,"x",defaultx + xa + (getPropertyFromGroup('notes',v,"isSustainNote") and 35 or 0))
             	setPropertyFromGroup("notes",v,"y",ypos + ya + (getPropertyFromGroup('notes',v,"isSustainNote") and 35 or 0))
             	setPropertyFromGroup("notes",v,"alpha",alp)
 
@@ -1870,7 +1913,7 @@ end
 
 --callbacks
 function init()
-
+me{0,4,linear,1,"drunk"}
 end
 function update()
 luaDebugMode = true
