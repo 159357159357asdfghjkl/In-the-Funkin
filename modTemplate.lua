@@ -9,8 +9,7 @@ TEMPLATE = {}
 -- use psych engine version >= 0.7.1
 -- there are two callbacks:init,update
 -- write mods in init
--- some stuffs were stolen from fnf modcharting tools and schmovin
-
+-- some stuffs were stolen from troll engine and modcharting tools
 -- EASING EQUATIONS
 
 ---------------------------------------------------------------------------------------
@@ -454,7 +453,7 @@ function quantize(f,interval)
 return int((f+interval/2)/interval)*interval
 end
 
-function rotateXYZ( rX, rY, rZ )
+function rotationXYZ( rX, rY, rZ )
     local PI=math.pi
 	rX = rX*(PI/180)
 	rY = rY*(PI/180)
@@ -474,20 +473,14 @@ function rotateXYZ( rX, rY, rZ )
 	 	m30=0, m31=0, m32=0, m33=1
 	  }
 end
-function fromEuler(roll, pitch, yaw)
-local rad = math.pi/180
-local cr = math.cos(roll * rad);
-local sr = math.sin(roll * rad);
-local cp = math.cos(pitch * rad);
-local sp = math.sin(pitch * rad);
-local cy = math.cos(yaw * rad);
-local sy = math.sin(yaw * rad);
-local q= {x=0, y=0, z=0, w=0 }
-q.w = cr * cp * cy + sr * sp * sy;
-q.x = sr * cp * cy - cr * sp * sy;
-q.y = cr * sp * cy + sr * cp * sy;
-q.z = cr * cp * sy - sr * sp * cy;
-return q;
+function rotate(xx,yy,angle)
+return {x=xx*math.cos(angle)-yy*math.sin(angle),y=xx*math.sin(angle)+yy*math.cos(angle)}
+end
+function rotateV3(vec, xA, yA, zA)
+local rotateZ = rotate(vec.x, vec.y, zA);
+local rotateY = rotate(rotateZ.x, vec.z, yA);
+local rotateX = rotate(rotateY.y, rotateZ.y, xA);
+return {x=rotateY.x, y=rotateX.y, z=rotateX.x}
 end
 function selectTanType(angle,is_csc)
 if is_csc ~= 0 then
@@ -677,7 +670,7 @@ modList = {
 	tantipsyz = 0,
 	tantipsyzspeed = 0,
 	tantipsyzoffset = 0,
-	--暂时用不了
+	-- can't use for a while
 	confusionx = 0,
 	confusionxoffset = 0,
 	confusiony = 0,
@@ -694,6 +687,15 @@ modList = {
 	distortwigglescratch = 0,
 	distortwiggleperiod = 0,
 	receptorscroll = 0,
+	fieldroll = 0,
+	fieldpitch = 0,
+	fieldyaw = 0,
+	fieldx = 0,
+	fieldy = 0,
+	fieldz = 0,
+	centerrotatex = 0,
+	centerrotatey = 0,
+	centerrotatez = 0,
 }
 
 --column specific mods
@@ -715,6 +717,9 @@ for i=0,3 do
 	modList['rotatex'..i] = 0
 	modList['rotatey'..i] = 0
 	modList['rotatez'..i] = 0
+	modList['centerrotatex'..i] = 0
+	modList['centerrotatey'..i] = 0
+	modList['centerrotatez'..i] = 0
 	modList['reverse'..i] = 0
 	modList['tiny'..i] = 0
 	modList['scale'..i] = 0
@@ -1109,40 +1114,12 @@ function arrowEffects(fYOffset, iCol, pn)
 	
     local xpos, ypos, rotz, zpos = 0, 0, 0, 0
 	
---[[	if m['confusion'..iCol] ~= 0 or m.confusion ~= 0 ~= 0 then
+	if m['confusion'..iCol] ~= 0 or m.confusion ~= 0 ~= 0 then
 		rotz = rotz + m['confusion'..iCol] + m.confusion
 	end
 	if m.dizzy ~= 0 then
 		rotz = rotz + m.dizzy*fYOffset
-	end]]
-    if m.rotatex ~= 0 or m.rotatey~= 0 or m.rotatez ~= 0 then	
-    local laneShit = iCol%4;
-    local offsetThing = 0.5
-        if (iCol < 2) then
-            offsetThing = -0.5;
-            laneShit = iCol+1;
-        end
-    local distFromCenter = ((laneShit)-2)+offsetThing;
-    xpos = xpos-distFromCenter*ARROW_SIZE;
-    local q = fromEuler(90+m.rotatez, m.rotatex, (downscroll and m.rotatey or -m.rotatey))
-    xpos= xpos+q.x * distFromCenter*ARROW_SIZE;
-    ypos= ypos+q.y * distFromCenter*ARROW_SIZE;
-    zpos= zpos+q.z * distFromCenter*ARROW_SIZE;
-    end
-    if m['rotatex'..iCol] ~= 0 or m['rotatey'..iCol] ~= 0 or m['rotatez'..iCol] ~= 0 then	
-    local laneShit = iCol%4;
-    local offsetThing = 0.5
-        if (iCol < 2) then
-            offsetThing = -0.5;
-            laneShit = iCol+1;
-        end
-    local distFromCenter = ((laneShit)-2)+offsetThing;
-    xpos = xpos-distFromCenter*ARROW_SIZE;
-    local q = fromEuler(90+m['rotatez'..iCol], m['rotatex'..iCol], (downscroll and m['rotatey'..iCol] or -m['rotatey'..iCol]))
-    xpos= xpos+q.x * distFromCenter*ARROW_SIZE;
-    ypos= ypos+q.y * distFromCenter*ARROW_SIZE;
-    zpos= zpos+q.z * distFromCenter*ARROW_SIZE;
-    end
+	end
     if m.drunk ~= 0 then
         xpos = xpos + m.drunk * math.cos(getSongPosition()*0.001 * (1 + m.drunkspeed) + iCol * ((m.drunkoffset * 0.2) + 0.2) + fYOffset * ((m.drunkperiod * 10) + 10) / screenHeight) * ARROW_SIZE * 0.5;
     end
@@ -1718,22 +1695,38 @@ function TEMPLATE.update(elapsed)
 				--print('Areceptor '..c..' is '..tostring(receptor))
 			
 				local defaultx, defaulty = defaultPositions[c+1].x, defaultPositions[c+1].y
-				
-	setPropertyFromGroup("strumLineNotes",c,"x",defaultx + xp)
-                setPropertyFromGroup("strumLineNotes",c,"y",defaulty + yp)
+				    setPropertyFromGroup('strumLineNotes', c, 'x', defaultx + xp)
+			setPropertyFromGroup('strumLineNotes', c, 'y', defaulty + yp)
                 setPropertyFromGroup("strumLineNotes",c,"angle",rz)
                 setPropertyFromGroup("strumLineNotes",c,"alpha",alp)
 			
-    local rotx,roty,rotz = receptorRotation(0,col,pn)
-    local rotation = rotateXYZ(rotx,roty,rotz)
-    local rX=rotation.m00+rotation.m10+rotation.m20+rotation.m30
-    local rY=rotation.m01+rotation.m11+rotation.m21+rotation.m31
-    local rZ=rotation.m02+rotation.m12+rotation.m22+rotation.m32
-    local rW=rotation.m03+rotation.m13+rotation.m23+rotation.m33
-    setPropertyFromGroup('strumLineNotes', c, 'x',getPropertyFromGroup('strumLineNotes', c, 'x')*rX)
-	setPropertyFromGroup('strumLineNotes', c, 'y', getPropertyFromGroup("strumLineNotes",c,"y")*rY)
-			zp=zp*rZ
-			
+    --[[local rotx,roty,rotz = receptorRotation(0,col,pn)
+    local rotation=rotationXYZ(rotx, roty, rotz)
+    local r={x=rotation.m00+rotation.m01+rotation.m02+rotation.m03,
+    y=rotation.m10+rotation.m11+rotation.m12+rotation.m13,
+    z=rotation.m20+rotation.m21+rotation.m22+rotation.m23}
+    setPropertyFromGroup('strumLineNotes', c, 'x',getPropertyFromGroup('strumLineNotes', c, 'x')+r.x)
+	setPropertyFromGroup('strumLineNotes', c, 'y', getPropertyFromGroup("strumLineNotes",c,"y")+r.y)
+			zp=zp+r.z]]
+	local m=activeMods[pn]
+    if m.rotatex ~= 0 or m.rotatey ~= 0 or m.rotatez ~= 0 or m["rotatex"..col] ~= 0 or m["rotatey"..col] ~= 0 or m["rotatez"..col] ~= 0 then
+	local origin = {defaultx, screenHeight* 0.5}
+    local diff = {x=getPropertyFromGroup("strumLineNotes",c,"x")-origin[1],y=getPropertyFromGroup("strumLineNotes",c,"y")-origin[2],
+    z=zp}
+    local out = rotateV3(diff,math.rad(m.rotatex+m["rotatex"..col]),math.rad(m.rotatey+m["rotatey"..col]),math.rad(m.rotatez+m["rotatez"..col]))
+    setPropertyFromGroup('strumLineNotes', c, 'x', origin[1]+out.x)
+			setPropertyFromGroup('strumLineNotes', c, 'y', origin[2]+out.y)
+zp=zp+out.z
+end
+    if m.centerrotatex ~= 0 or m.centerrotatey ~= 0 or m.centerrotatez ~= 0 or m["centerrotatex"..col] ~= 0 or m["centerrotatey"..col] ~= 0 or m["centerrotatez"..col] ~= 0 then
+	local origin = {screenWidth*0.5, screenHeight* 0.5}
+    local diff = {x=getPropertyFromGroup("strumLineNotes",c,"x")-origin[1],y=getPropertyFromGroup("strumLineNotes",c,"y")-origin[2],
+    z=zp}
+    local out = rotateV3(diff,math.rad(m.centerrotatex+m["centerrotatex"..col]),math.rad(m.centerrotatey+m["centerrotatey"..col]),math.rad(m.centerrotatez+m["centerrotatez"..col]))
+    setPropertyFromGroup('strumLineNotes', c, 'x', origin[1]+out.x)
+			setPropertyFromGroup('strumLineNotes', c, 'y', origin[2]+out.y)
+zp=zp+out.z
+end
 			local scalex, scaley = getScale(0, col, pn, defaultscale[c+1].x, defaultscale[c+1].y)
 
 	local zNear,zFar = 0,100
@@ -1741,8 +1734,11 @@ function TEMPLATE.update(elapsed)
 	local fov = 90
 	local tanHalfFOV = math.tan(math.rad(fov/2))
 
-	local strum = c < 4 and "defaultOpponentStrum" or "defaultPlayerStrum"
-			local pos={x=_G[strum..'X'..c%4]+xp - (screenWidth/2),y=_G[strum..'Y'..c%4]+yp - (screenHeight/2),z=zp/1000-1}
+			local origin={x=getPropertyFromGroup("strumLineNotes",c,"x") - (screenWidth/2),y=getPropertyFromGroup("strumLineNotes",c,"y") - (screenHeight/2),z=zp}
+
+    local r=rotateV3(origin,math.rad(m.fieldpitch),math.rad(m.fieldyaw),math.rad(m.fieldroll))
+
+			local pos={x=r.x+m.fieldx,y=r.y+m.fieldy,z=(r.z-(1000+m.fieldz))/1000}
 			local X = pos.x*(1/tanHalfFOV)/-pos.z+(screenWidth/2)
 			local Y = pos.y/(1/tanHalfFOV)/-pos.z+(screenHeight/2)
 			setPropertyFromGroup('strumLineNotes', c, 'x', X)
@@ -1814,14 +1810,35 @@ setPropertyFromGroup("strumLineNotes",c,"scale.y",getPropertyFromGroup("strumLin
             	setPropertyFromGroup("notes",v,"y",ypos + ya + (getPropertyFromGroup('notes',v,"isSustainNote") and 35 or 0))
             	setPropertyFromGroup("notes",v,"alpha",alp)
 
+
+        local m=activeMods[pn]
+    if m.rotatex ~= 0 or m.rotatey ~= 0 or m.rotatez ~= 0 or m["rotatex"..col] ~= 0 or m["rotatey"..col] ~= 0 or m["rotatez"..col] ~= 0 then
+	local origin = {defaultx, screenHeight* 0.5}
+    local diff = {x=getPropertyFromGroup("notes",v,"x")-origin[1],y=getPropertyFromGroup("notes",v,"y")-origin[2],
+    z=za}
+    local out = rotateV3(diff,math.rad(m.rotatex+m["rotatex"..col]),math.rad(m.rotatey+m["rotatey"..col]),math.rad(m.rotatez+m["rotatez"..col]))
+    setPropertyFromGroup('notes', v, 'x', origin[1]+out.x)
+	setPropertyFromGroup('notes', v, 'y', origin[2]+out.y)
+    za=za+out.z
+end
+    if m.centerrotatex ~= 0 or m.centerrotatey ~= 0 or m.centerrotatez ~= 0 or m["centerrotatex"..col] ~= 0 or m["centerrotatey"..col] ~= 0 or m["centerrotatez"..col] ~= 0 then
+	local origin = {screenWidth*0.5, screenHeight* 0.5}
+    local diff = {x=getPropertyFromGroup("notes",v,"x")-origin[1],y=getPropertyFromGroup("notes",v,"y")-origin[2],
+    z=za}
+    local out = rotateV3(diff,math.rad(m.centerrotatex+m["centerrotatex"..col]),math.rad(m.centerrotatey+m["centerrotatey"..col]),math.rad(m.centerrotatez+m["centerrotatez"..col]))
+    setPropertyFromGroup('notes', v, 'x', origin[1]+out.x)
+	setPropertyFromGroup('notes', v, 'y', origin[2]+out.y)
+    za=za+out.z
+end
     local off=(getPropertyFromGroup('notes',v,"isSustainNote") and 35 or 0)
     local zNear,zFar = 0,100
 	local zRange = zNear - zFar
 	local fov = 90
 	local tanHalfFOV = math.tan(math.rad(fov/2))
+			local origin={x=getPropertyFromGroup('notes',v,"x") - (screenWidth/2),y= getPropertyFromGroup('notes',v,"y") - (screenHeight/2),z=za}
+    local r=rotateV3(origin,math.rad(m.fieldpitch),math.rad(m.fieldyaw),math.rad(m.fieldroll))
+			local pos={x=r.x+m.fieldx,y=r.y+m.fieldy,z=(r.z-(1000+m.fieldz))/1000}
 
-	local strum = c < 4 and "defaultOpponentStrum" or "defaultPlayerStrum"
-			local pos={x=_G[strum..'X'..c%4]+xa+off - (screenWidth/2),y= ypos+off+ya - (screenHeight/2),z=za/1000-1}
 			local X = pos.x*(1/tanHalfFOV)/-pos.z+(screenWidth/2)
 			local Y = pos.y/(1/tanHalfFOV)/-pos.z+(screenHeight/2)
 			setPropertyFromGroup('notes', v, 'x', X)
@@ -1836,7 +1853,7 @@ setPropertyFromGroup('notes', v, 'scale.x', scalex * scale)
 setPropertyFromGroup("notes",v,"scale.x",(getPropertyFromGroup('notes',v,"scale.x")*zoom))
 
   setPropertyFromGroup("notes",v,"scale.y",(getPropertyFromGroup('notes',v,"scale.y")*(getPropertyFromGroup('notes',v,"isSustainNote") and 1 or zoom)))
-  
+
   
 			end
 			
@@ -1913,11 +1930,10 @@ end
 
 --callbacks
 function init()
-me{0,4,linear,1,"drunk"}
+me{0,2,linear,360,"rotatey"}
 end
 function update()
 luaDebugMode = true
 end
 --end callbacks
-
 return 0
