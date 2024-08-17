@@ -10,6 +10,7 @@ TEMPLATE = {}
 -- there are two callbacks:init,update
 -- write mods in init
 -- some stuffs were stolen from troll engine and modcharting tools
+
 -- EASING EQUATIONS
 
 ---------------------------------------------------------------------------------------
@@ -477,10 +478,15 @@ function rotate(xx,yy,angle)
 return {x=xx*math.cos(angle)-yy*math.sin(angle),y=xx*math.sin(angle)+yy*math.cos(angle)}
 end
 function rotateV3(vec, xA, yA, zA)
-local rotateZ = rotate(vec.x, vec.y, zA);
-local rotateY = rotate(rotateZ.x, vec.z, yA);
-local rotateX = rotate(rotateY.y, rotateZ.y, xA);
-return {x=rotateY.x, y=rotateX.y, z=rotateX.x}
+        local rotateZ = rotate(vec.x, vec.y, zA);
+        local offZ = {x=rotateZ.x, y=rotateZ.y, z=vec.z}
+
+        local rotateX = rotate(offZ.z, offZ.y, xA);
+        local offX = {x=offZ.x, y=rotateX.y, z=rotateX.x}
+
+        local rotateY = rotate(offX.x, offX.z, yA);
+        local offY = {x=rotateY.x, y=offX.y, z=rotateY.y}
+return offY
 end
 function selectTanType(angle,is_csc)
 if is_csc ~= 0 then
@@ -488,6 +494,21 @@ return fastCsc(angle)
 else
 return fastTan(angle)
 end
+end
+function fromEuler(roll, pitch, yaw)
+local rad=math.pi/180.0
+ local cr = math.cos(roll * rad);
+ local sr = math.sin(roll * rad);
+ local cp = math.cos(pitch * rad);
+ local sp = math.sin(pitch * rad);
+ local cy = math.cos(yaw * rad);
+ local sy = math.sin(yaw * rad);
+ local q= {x=0, y=0, z=0, w=0 }
+q.w = cr * cp * cy + sr * sp * sy;
+q.x = sr * cp * cy - cr * sp * sy;
+q.y = cr * sp * cy + sr * cp * sy;
+q.z = cr * cp * sy - sr * sp * cy;
+return q;
 end
 
 ---------------------------------------------------------------------------------------
@@ -617,6 +638,8 @@ modList = {
 	outside = 0,
 	camx = 0,
 	camy = 0,
+	camalpha = 1,
+	camzoom = 0,
 	rotationz = 0,
 	camwag = 0,
 	xmod = 1, --scrollSpeed
@@ -696,6 +719,14 @@ modList = {
 	centerrotatex = 0,
 	centerrotatey = 0,
 	centerrotatez = 0,
+	incominganglex = 0,
+	incomingangley = 0,
+	arotatex = 0,
+	arotatey = 0,
+	arotatez = 0,
+	localrotatex = 0,
+	localrotatey = 0,
+	localrotatez = 0,
 }
 
 --column specific mods
@@ -717,9 +748,15 @@ for i=0,3 do
 	modList['rotatex'..i] = 0
 	modList['rotatey'..i] = 0
 	modList['rotatez'..i] = 0
+	modList['arotatex'..i] = 0
+	modList['arotatey'..i] = 0
+	modList['arotatez'..i] = 0
 	modList['centerrotatex'..i] = 0
 	modList['centerrotatey'..i] = 0
 	modList['centerrotatez'..i] = 0
+	modList['localrotatex'..i] = 0
+	modList['localrotatey'..i] = 0
+	modList['localrotatez'..i] = 0
 	modList['reverse'..i] = 0
 	modList['tiny'..i] = 0
 	modList['scale'..i] = 0
@@ -1120,6 +1157,20 @@ function arrowEffects(fYOffset, iCol, pn)
 	if m.dizzy ~= 0 then
 		rotz = rotz + m.dizzy*fYOffset
 	end
+	if m.arotatex ~= 0 or m.arotatey~= 0 or m.arotatez ~= 0 or m['arotatex'..iCol] ~= 0 or m['arotatey'..iCol] ~= 0 or m['arotatez'..iCol] ~= 0 then	
+    local laneShit = iCol%4;
+    local offsetThing = 0.5
+        if (iCol < 2) then
+            offsetThing = -0.5;
+            laneShit = iCol+1;
+        end
+    local distFromCenter = ((laneShit)-2)+offsetThing;
+    xpos = xpos-distFromCenter*ARROW_SIZE;
+    local q = fromEuler(90+m.arotatez+m['arotatez'..iCol], m.arotatex+m['arotatex'..iCol], (downscroll and m.arotatey+m['arotatey'..iCol] or -m.arotatey-m['arotatey'..iCol]))
+    xpos= xpos+q.x * distFromCenter*ARROW_SIZE;
+    ypos= ypos+q.y * distFromCenter*ARROW_SIZE;
+    zpos= zpos+q.z * distFromCenter*ARROW_SIZE;
+    end
     if m.drunk ~= 0 then
         xpos = xpos + m.drunk * math.cos(getSongPosition()*0.001 * (1 + m.drunkspeed) + iCol * ((m.drunkoffset * 0.2) + 0.2) + fYOffset * ((m.drunkperiod * 10) + 10) / screenHeight) * ARROW_SIZE * 0.5;
     end
@@ -1563,6 +1614,14 @@ function m2(t)
 	table.insert(event,t)
 end
 
+function frameCounter(start,ends,interval,func) -- timing must be "end"
+local index = start;
+while index < ends do
+func(index)
+index = index + interval
+end
+end
+
 function TEMPLATE.songStart()
     
     downscroll = false
@@ -1588,7 +1647,7 @@ function TEMPLATE.songStart()
 	songStarted = true
 	
 end
-    
+
 function TEMPLATE.update(elapsed)
     beat = (getSongPosition() / 1000) * (curBpm/60)
 	
@@ -1680,7 +1739,7 @@ function TEMPLATE.update(elapsed)
 	-- ACTUALLY APPLY THE RESULTS OF THE ABOVE CALCULATIONS TO THE NOTES
 	---------------------------------------
 
-	setCamNotes(activeMods[1].camx,activeMods[1].camy,activeMods[1].rotationz + activeMods[1].camwag * math.sin(beat*math.pi))
+	setCamNotes(activeMods[1].camx,activeMods[1].camy,activeMods[1].rotationz + activeMods[1].camwag * math.sin(beat*math.pi),activeMods[1].camalpha,activeMods[1].camzoom)
 	
 
 			
@@ -1702,12 +1761,12 @@ function TEMPLATE.update(elapsed)
 			
     --[[local rotx,roty,rotz = receptorRotation(0,col,pn)
     local rotation=rotationXYZ(rotx, roty, rotz)
-    local r={x=rotation.m00+rotation.m01+rotation.m02+rotation.m03,
+    local anglepos={x=rotation.m00+rotation.m01+rotation.m02+rotation.m03,
     y=rotation.m10+rotation.m11+rotation.m12+rotation.m13,
     z=rotation.m20+rotation.m21+rotation.m22+rotation.m23}
-    setPropertyFromGroup('strumLineNotes', c, 'x',getPropertyFromGroup('strumLineNotes', c, 'x')+r.x)
-	setPropertyFromGroup('strumLineNotes', c, 'y', getPropertyFromGroup("strumLineNotes",c,"y")+r.y)
-			zp=zp+r.z]]
+    setPropertyFromGroup('strumLineNotes', c, 'x',getPropertyFromGroup('strumLineNotes', c, 'x')+anglepos.x)
+	setPropertyFromGroup('strumLineNotes', c, 'y', getPropertyFromGroup("strumLineNotes",c,"y")+anglepos.y)
+			zp=zp+anglepos.z]]
 	local m=activeMods[pn]
     if m.rotatex ~= 0 or m.rotatey ~= 0 or m.rotatez ~= 0 or m["rotatex"..col] ~= 0 or m["rotatey"..col] ~= 0 or m["rotatez"..col] ~= 0 then
 	local origin = {defaultx, screenHeight* 0.5}
@@ -1716,13 +1775,32 @@ function TEMPLATE.update(elapsed)
     local out = rotateV3(diff,math.rad(m.rotatex+m["rotatex"..col]),math.rad(m.rotatey+m["rotatey"..col]),math.rad(m.rotatez+m["rotatez"..col]))
     setPropertyFromGroup('strumLineNotes', c, 'x', origin[1]+out.x)
 			setPropertyFromGroup('strumLineNotes', c, 'y', origin[2]+out.y)
-zp=zp+out.z
+    zp=zp+out.z
 end
     if m.centerrotatex ~= 0 or m.centerrotatey ~= 0 or m.centerrotatez ~= 0 or m["centerrotatex"..col] ~= 0 or m["centerrotatey"..col] ~= 0 or m["centerrotatez"..col] ~= 0 then
 	local origin = {screenWidth*0.5, screenHeight* 0.5}
     local diff = {x=getPropertyFromGroup("strumLineNotes",c,"x")-origin[1],y=getPropertyFromGroup("strumLineNotes",c,"y")-origin[2],
     z=zp}
     local out = rotateV3(diff,math.rad(m.centerrotatex+m["centerrotatex"..col]),math.rad(m.centerrotatey+m["centerrotatey"..col]),math.rad(m.centerrotatez+m["centerrotatez"..col]))
+    setPropertyFromGroup('strumLineNotes', c, 'x', origin[1]+out.x)
+			setPropertyFromGroup('strumLineNotes', c, 'y', origin[2]+out.y)
+zp=zp+out.z
+end
+    if m.localrotatex ~= 0 or m.localrotatey ~= 0 or m.localrotatez ~= 0 or m["localrotatex"..col] ~= 0 or m["localrotatey"..col] ~= 0 or m["localrotatez"..col] ~= 0 then
+    local x = (screenWidth* 0.5) - ARROW_SIZE - 54 + ARROW_SIZE * 1.5;
+    if pn == 2 then
+    x = x + (screenWidth* 0.5 - ARROW_SIZE * 2 - 100)
+    elseif pn == 1 then
+    x = x - (screenWidth* 0.5 - ARROW_SIZE * 2 - 100)
+    end
+		x = x-56;
+
+		local origin = {x, screenHeight* 0.5}
+		local diff = {x=getPropertyFromGroup("strumLineNotes",c,"x")-origin[1],y=getPropertyFromGroup("strumLineNotes",c,"y")-origin[2],
+    z=zp}
+        diff.z = diff.z * screenHeight;
+		local out = rotateV3(diff, math.rad(m.localrotatex + m['localrotatex'..col]),math.rad(m.localrotatey+m['localrotatey'..col]),math.rad(m.localrotatez + m['localrotatez'..col]));
+        out.z = out.z / screenHeight;
     setPropertyFromGroup('strumLineNotes', c, 'x', origin[1]+out.x)
 			setPropertyFromGroup('strumLineNotes', c, 'y', origin[2]+out.y)
 zp=zp+out.z
@@ -1830,7 +1908,39 @@ end
 	setPropertyFromGroup('notes', v, 'y', origin[2]+out.y)
     za=za+out.z
 end
-    local off=(getPropertyFromGroup('notes',v,"isSustainNote") and 35 or 0)
+    if m.localrotatex ~= 0 or m.localrotatey ~= 0 or m.localrotatez ~= 0 or m["localrotatex"..col] ~= 0 or m["localrotatey"..col] ~= 0 or m["localrotatez"..col] ~= 0 then
+    local x = (screenWidth* 0.5) - ARROW_SIZE - 54 + ARROW_SIZE * 1.5;
+    if pn == 2 then
+    x = x + (screenWidth* 0.5 - ARROW_SIZE * 2 - 100)
+    elseif pn == 1 then
+    x = x - (screenWidth* 0.5 - ARROW_SIZE * 2 - 100)
+    end
+		x = x-56;
+
+		local origin = {x, screenHeight* 0.5}
+		local diff = {x=getPropertyFromGroup("notes",v,"x")-origin[1],y=getPropertyFromGroup("notes",v,"y")-origin[2],
+    z=za}
+
+        diff.z = diff.z * screenHeight
+		local out = rotateV3(diff, math.rad(m.localrotatex + m['localrotatex'..col]),math.rad(m.localrotatey+m['localrotatey'..col]),math.rad(m.localrotatez + m['localrotatez'..col]));
+        out.z = out.z / screenHeight;
+    setPropertyFromGroup('notes', v, 'x', origin[1]+out.x)
+			setPropertyFromGroup('notes', v, 'y', origin[2]+out.y)
+za=za+out.z
+end
+if m.incomingangley ~= 0 then
+    local diff = {x=0,y=getPropertyFromGroup("notes",v,"y")-defaulty,z=za}
+    local out = rotateV3(diff,math.rad(m.incomingangley),0,0)
+	setPropertyFromGroup('notes', v, 'y', defaulty+out.y)
+    za=za+out.z
+end
+if m.incominganglex~= 0 then
+    local diff = {x=getPropertyFromGroup("notes",v,"x")-defaultx,y=getPropertyFromGroup("notes",v,"y")-defaulty,z=0}
+    local out = rotateV3(diff,0,0,math.rad(m.incominganglex))
+    setPropertyFromGroup('notes', v, 'x', defaultx+out.x)
+	setPropertyFromGroup('notes', v, 'y',defaulty+out.y)
+end
+
     local zNear,zFar = 0,100
 	local zRange = zNear - zFar
 	local fov = 90
@@ -1930,7 +2040,8 @@ end
 
 --callbacks
 function init()
-me{0,2,linear,360,"rotatey"}
+unhide{0}
+--me{0,4,linear,360,"rotatex"}
 end
 function update()
 luaDebugMode = true
