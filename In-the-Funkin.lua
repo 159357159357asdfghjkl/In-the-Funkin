@@ -500,6 +500,7 @@ modList = {
 	beat = 0,
 	flip = 0,
 	invert = 0,
+	divide = 0,
 	drunk = 0,
 	drunkspeed = 0,
 	drunkoffset = 0,
@@ -560,6 +561,7 @@ modList = {
 	tiny = 0,
 	tinyx = 0,
 	tinyy = 0,
+	tinyz = 0,
 	zigzag = 0,
 	zigzagoffset = 0,
 	zigzagperiod = 0,
@@ -583,6 +585,7 @@ modList = {
 	zoom = 0,
 	zoomx = 0,
 	zoomy = 0,
+	zoomz = 0,
 	squish = 0,
 	stretch = 0,
 	pulseinner = 0,
@@ -691,6 +694,18 @@ modList = {
 	rotatex = 0,
 	rotatey = 0,
 	rotatez = 0,
+	scalex = 0,
+	scaley = 0,
+	scalez = 0,
+	notetinyx = 0,
+	notetinyy = 0,
+	notetinyz = 0,
+	skewx = 0,
+	skewy = 0,
+	noteskewx = 0,
+	noteskewy = 0,
+	skew = 0,
+	noteskew = 0,
 }
 
 --column specific mods
@@ -705,17 +720,34 @@ for i=0,3 do
 	modList['stealth'..i] = 0
 	modList['tinyx'..i] = 0
 	modList['tinyy'..i] = 0
+	modList['tinyz'..i] = 0
+	modList['notetinyx'..i] = 0
+	modList['notetinyy'..i] = 0
+	modList['notetinyz'..i] = 0
 	modList['confusion'..i] = 0
 	modList['confusionx'..i] = 0
 	modList['confusionxoffset'..i] = 0
 	modList['confusiony'..i] = 0
 	modList['confusionyoffset'..i] = 0
 	modList['confusionoffset'..i] = 0
+	modList['rotatex'..i] = 0
+	modList['rotatey'..i] = 0
+	modList['rotatez'..i] = 0
 	modList['reverse'..i] = 0
 	modList['tiny'..i] = 0
 	modList['zoom'..i] = 0
 	modList['zoomx'..i] = 0
 	modList['zoomy'..i] = 0
+	modList['zoomz'..i] = 0
+	modList['skew'..i] = 0
+	modList['skewx'..i] = 0
+	modList['skewy'..i] = 0
+	modList['noteskew'..i] = 0
+	modList['noteskewx'..i] = 0
+	modList['noteskewy'..i] = 0
+	modList['scalex'..i] = 0
+	modList['scaley'..i] = 0
+	modList['scalez'..i] = 0
 	modList['squish'..i] = 0
 	modList['stretch'..i] = 0
 	modList['bumpy'..i] = 0
@@ -949,7 +981,7 @@ function getZoom(fYOffset, iCol, pn)
 end
 
 --im fucked
-function receptorRotation(fYOffset,iCol,pn)
+function receptorRotation(iCol,pn)
     local fRotationX, fRotationY, fRotationZ = 0, 0, 0
     local m = activeMods[pn]
     if m['confusionx'..iCol]~= 0 then
@@ -1078,12 +1110,19 @@ function arrowRotation(fYOffset,iCol,pn,noteBeat)
     return fRotationX, fRotationY, fRotationZ
 end
 
-function getScale(fYOffset, iCol, pn, sx, sy)
+function getScale(fYOffset, iCol, pn, sx, sy, isNote)
     local x = sx
     local y = sy
+	local z = 0
     local m = activeMods[pn]
+	x = x + m.scalex + m['scalex'..iCol]
+    y = y + m.scaley + m['scaley'..iCol]
+	z = z + m.scalez + m['scalez'..iCol]
+	if isNote then
     x = x + m.zoomx + m['zoomx'..iCol]
     y = y + m.zoomy + m['zoomy'..iCol]
+	z = z + m.zoomz + m['zoomz'..iCol]
+	end
     local angle = 0;
     local stretch = m.stretch + m['stretch'..iCol]
     local squish = m.squish + m['squish'..iCol]
@@ -1094,12 +1133,30 @@ function getScale(fYOffset, iCol, pn, sx, sy)
     local squishY = lerp(1, 0.5, squish);
 	x = x * math.pow( 0.5, m.tinyx ) * math.pow( 0.5, m['tinyx'..iCol] )
 	y = y * math.pow( 0.5, m.tinyy ) * math.pow( 0.5, m['tinyy'..iCol] )
+	z = z * math.pow( 0.5, m.tinyz ) * math.pow( 0.5, m['tinyz'..iCol] )
+	if isNote then
+		x = x * math.pow( 0.5, m.notetinyx ) * math.pow( 0.5, m['notetinyx'..iCol] )
+		y = y * math.pow( 0.5, m.notetinyy ) * math.pow( 0.5, m['notetinyy'..iCol] )
+		z = z * math.pow( 0.5, m.notetinyz ) * math.pow( 0.5, m['notetinyz'..iCol] )
+	end
+
 	x = x * ((math.sin(angle * math.pi / 180) * squishY) + (math.cos(angle * math.pi / 180) * squishX));
 	x = x * ((math.sin(angle * math.pi / 180) * stretchY) + (math.cos(angle * math.pi / 180) * stretchX));
 
 	y = y * ((math.cos(angle * math.pi / 180) * stretchY) + (math.sin(angle * math.pi / 180) * stretchX));
 	y = y * ((math.cos(angle * math.pi / 180) * squishY) + (math.sin(angle * math.pi / 180) * squishX));
 		return x,y
+end
+
+function getSkew(iCol,pn,isNote)
+	local m = activeMods[pn]
+	local x = m.skewx + m.skew + m['skew'..iCol] + m['skewx'..iCol]
+	local y = m.skewy + m.skew + m['skew'..iCol] + m['skewy'..iCol]
+	if isNote then
+		x = x + m.noteskewx + m.noteskew + m['noteskew'..iCol] + m['noteskewx'..iCol]
+		y = y + m.noteskewy + m.noteskew + m['noteskew'..iCol] + m['noteskewy'..iCol]
+	end
+	return x,y
 end
 function arrowEffects(fYOffset, iCol, pn)
     local m = activeMods[pn]
@@ -1186,6 +1243,10 @@ function arrowEffects(fYOffset, iCol, pn)
 	if m.invert ~= 0 then
 		local fDistance = ARROW_SIZE * (iCol%2 == 0 and 1 or -1);
 		xpos = xpos + fDistance * m.invert;
+	end
+
+	if m.divide ~= 0 then
+		xpos = xpos + (iCol >= 2 and 1 or -1) * ARROW_SIZE
 	end
 	
 	if m.beat ~= 0 then
@@ -1585,12 +1646,36 @@ function arrowEffects(fYOffset, iCol, pn)
 		local r = {
 		x = rotation.m00+rotation.m01+rotation.m02+rotation.m03,
 		y = rotation.m10+rotation.m11+rotation.m12+rotation.m13,
-		z = rotation.m20+rotation.m21+rotation.m22+rotation.m32
+		z = rotation.m20+rotation.m21+rotation.m22+rotation.m23
 		}
 		local mult = ARROW_SIZE*1.5
 		xpos = xpos - r.x*mult + mult
 		ypos = ypos - r.y*mult + mult
 		zpos = zpos - r.z*mult + mult
+	end
+	if m['rotatex'..iCol] ~= 0 or m['rotatey'..iCol] ~= 0 or m['rotatez'..iCol] ~= 0 then
+		local rotation = RotationXYZ(m['rotatex'..iCol], m['rotatey'..iCol], m['rotatez'..iCol])
+		local r = {
+		x = rotation.m00+rotation.m01+rotation.m02+rotation.m03,
+		y = rotation.m10+rotation.m11+rotation.m12+rotation.m13,
+		z = rotation.m20+rotation.m21+rotation.m22+rotation.m23
+		}
+		local mult = ARROW_SIZE*1.5
+		xpos = xpos - r.x*mult + mult
+		ypos = ypos - r.y*mult + mult
+		zpos = zpos - r.z*mult + mult
+	end
+	if m.rotationx ~= 0 or m.rotationy ~= 0 or m.rotationz ~= 0 then
+		local rotation = RotationXYZ(m.rotationx, m.rotationy, m.rotationz)
+		local r = {
+		x = rotation.m00+rotation.m01+rotation.m02+rotation.m03,
+		y = rotation.m10+rotation.m11+rotation.m12+rotation.m13,
+		z = rotation.m20+rotation.m21+rotation.m22+rotation.m23
+		}
+		local mult = ARROW_SIZE*1.5
+		xpos = xpos + r.x*mult - mult
+		ypos = ypos + r.y*mult - mult
+		zpos = zpos + r.z*mult - mult
 	end
     return xpos, ypos, rotz, zpos
     
@@ -1766,15 +1851,8 @@ function TEMPLATE.update(elapsed)
                 setPropertyFromGroup("strumLineNotes",c,"angle",rz)
                 setPropertyFromGroup("strumLineNotes",c,"alpha",alp)
 			
-    --[[local rotx,roty,rotz = 
-    local rotation=rotationXYZ(rotx, roty, rotz)
-    local anglepos={x=rotation.m00+rotation.m01+rotation.m02+rotation.m03,
-    y=rotation.m10+rotation.m11+rotation.m12+rotation.m13,
-    z=rotation.m20+rotation.m21+rotation.m22+rotation.m23}
-    setPropertyFromGroup('strumLineNotes', c, 'x',getPropertyFromGroup('strumLineNotes', c, 'x')+anglepos.x)
-	setPropertyFromGroup('strumLineNotes', c, 'y', getPropertyFromGroup("strumLineNotes",c,"y")+anglepos.y)
-			zp=zp+anglepos.z]]
-			local scalex, scaley = getScale(0, col, pn, defaultscale[c+1].x, defaultscale[c+1].y)
+
+			local scalex, scaley = getScale(0, col, pn, defaultscale[c+1].x, defaultscale[c+1].y, false)
 	local zNear,zFar = 0,100
 	local zRange = zNear - zFar
 	local fov = 90
@@ -1796,13 +1874,26 @@ setPropertyFromGroup('strumLineNotes', c, 'scale.x', scalex * scale)
 
 setPropertyFromGroup("strumLineNotes",c,"scale.x",getPropertyFromGroup("strumLineNotes",c,"scale.x")*zoom)
 setPropertyFromGroup("strumLineNotes",c,"scale.y",getPropertyFromGroup("strumLineNotes",c,"scale.y")*zoom)
+			if version == 'specific' then
+				local xskew,yskew = getSkew(col,pn,false)
+				setPropertyFromGroup("strumLineNotes",c,"skew.x",xskew)
+				setPropertyFromGroup("strumLineNotes",c,"skew.y",yskew)
 
-			
+				local rotx,roty,rotz = receptorRotation(col,pn)
+				local rotation = RotationXYZ(rotx,roty,rotz)
+				local matToVec = {
+				  x = rotation.m00+rotation.m01+rotation.m02+rotation.m03,
+				  y = rotation.m10+rotation.m11+rotation.m12+rotation.m13,
+				  z = rotation.m20+rotation.m21+rotation.m22+rotation.m23
+				  }
+				  setPropertyFromGroup("strumLineNotes",c,"rotation.x",rotx)
+				  setPropertyFromGroup("strumLineNotes",c,"rotation.y",roty)
+			end
 				--local scrollSpeed = xmod * activeMods[pn]['xmod'..col] * (1 - 2*getReverseForCol(col,pn))
 				--setLaneScrollspeed(c,scrollSpeed)
 				
 				--print('Breceptor '..c..' is '..tostring(receptor))
-				
+
 			end
 		end
 		
@@ -1836,7 +1927,7 @@ setPropertyFromGroup("strumLineNotes",c,"scale.y",getPropertyFromGroup("strumLin
 					local zoom = getZoom(ypos-defaulty,col,pn)
 				local xa, ya, rz, za = arrowEffects(ypos-defaulty, col, pn)
 				local alp = arrowAlpha(ypos-defaulty, col, pn)
-			    local scalex, scaley = getScale(ypos-defaulty, col, pn, defaultscale[c+1].x, defaultscale[c+1].y)
+			    local scalex, scaley = getScale(ypos-defaulty, col, pn, defaultscale[c+1].x, defaultscale[c+1].y, true)
 				if getPropertyFromGroup('notes',v,"isSustainNote") --[[and not note.isParent]] then
 					local ypos2 = getYAdjust(defaulty - ((getSongPosition()+.1) - targTime),col,pn) * scrollSpeeds * 0.45 - off + ARROW_SIZE / 2
 
@@ -1853,7 +1944,12 @@ setPropertyFromGroup("strumLineNotes",c,"scale.y",getPropertyFromGroup("strumLin
                 setPropertyFromGroup("notes",v,"x",defaultx + xa + (getPropertyFromGroup('notes',v,"isSustainNote") and 35 or 0))
             	setPropertyFromGroup("notes",v,"y",ypos + ya + (getPropertyFromGroup('notes',v,"isSustainNote") and 35 or 0))
             	setPropertyFromGroup("notes",v,"alpha",alp)
-
+				local susend = string.find(string.lower(getPropertyFromGroup('notes', v, 'animation.curAnim.name')), 'end') or string.find(string.lower(getPropertyFromGroup('notes', v, 'animation.curAnim.name')), 'tail')
+				if isSus and not susend then
+					setPropertyFromGroup("notes",v,"scale.y",scrollSpeed*activeMods[pn].xmod*(stepCrochet / 100 * 1.05)*getPropertyFromGroup('notes',v,"scale.y"))
+				else
+					setPropertyFromGroup("notes",v,"scale.y",(getPropertyFromGroup('notes',v,"scale.y")* zoom))
+				end
 
 
     local zNear,zFar = 0,100
@@ -1878,7 +1974,22 @@ setPropertyFromGroup("strumLineNotes",c,"scale.y",getPropertyFromGroup("strumLin
 
   			setPropertyFromGroup("notes",v,"scale.y",(getPropertyFromGroup('notes',v,"scale.y")*(getPropertyFromGroup('notes',v,"isSustainNote") and 1 or zoom)))
 
-  
+			if version == 'specific' then
+			  local xskew,yskew = getSkew(col,pn,true)
+			  setPropertyFromGroup("notes",v,"skew.x",xskew)
+			  setPropertyFromGroup("notes",v,"skew.y",yskew)
+
+			  local rotx,roty,rotz = arrowRotation(ypos-defaulty,col,pn,getPropertyFromGroup('notes',v,"beat"))
+			  local rotation = RotationXYZ(rotx,roty,rotz)
+			  local matToVec = {
+				x = rotation.m00+rotation.m01+rotation.m02+rotation.m03,
+				y = rotation.m10+rotation.m11+rotation.m12+rotation.m13,
+				z = rotation.m20+rotation.m21+rotation.m22+rotation.m23
+				}
+			  setPropertyFromGroup("notes",v,"rotation.x",matToVec.x)
+			  setPropertyFromGroup("notes",v,"rotation.y",matToVec.y)
+			end
+
 			end
 			
 		end
@@ -1915,14 +2026,11 @@ end
 
 --callbacks
 function initCommand()
-	local me = ease
-	local mpf = func
-	local m2 = func
     local function hide(t)
 		local bt,tpn = t[1],t.pn
 		for i=0,3 do
-			me{bt+i*.125-1,.5,outExpo,-70,'movey'..i,pn=tpn}
-			me{bt+i*.125-.5,1.25,inExpo,650,'movey'..i,pn=tpn}
+			ease{bt+i*.125-1,.5,outExpo,-70,'movey'..i,pn=tpn}
+			ease{bt+i*.125-.5,1.25,inExpo,650,'movey'..i,pn=tpn}
 			set{bt+i*.125+1.75,1,'stealth',pn=tpn}
 			set{bt+i*.125+1.75,1,'dark',pn=tpn}
 		end
@@ -1932,9 +2040,9 @@ function initCommand()
 		for i=0,3 do
 			set{bt+i*.125-2,0,'stealth',pn=tpn}
 			set{bt+i*.125-2,0,'dark',pn=tpn}
-			me{bt+i*.125-2,1,outExpo,-70,'movey'..i,pn=tpn}
-			me{bt+i*.125-1,1,inExpo,50,'movey'..i,pn=tpn}
-			me{bt+i*.125-0,1.25,outElastic,0,'movey'..i,pn=tpn}
+			ease{bt+i*.125-2,1,outExpo,-70,'movey'..i,pn=tpn}
+			ease{bt+i*.125-1,1,inExpo,50,'movey'..i,pn=tpn}
+			ease{bt+i*.125-0,1.25,outElastic,0,'movey'..i,pn=tpn}
 		end
 	end
 	--wiggle(beat,num,div,ease,amt,mod)
@@ -1945,7 +2053,7 @@ function initCommand()
 			local smul = i==0 and 1 or 0
 			local emul = i==num and 0 or 1
 			
-			me{b+i*(1/div),1/div,ea,startVal = am*smul*f, am*emul*-f,mo,pn=t.pn}
+			ease{b+i*(1/div),1/div,ea,startVal = am*smul*f, am*emul*-f,mo,pn=t.pn}
 			
 			f = f*-1
 		end
@@ -1955,14 +2063,14 @@ function initCommand()
 		local b,len,eas,amt,mods,intime = tab[1],tab[2],tab[3],tab[4],tab[5],tab.intime
 		if not intime then intime = .1 end
 		if intime <= 0 then intime = .001 end
-		me{b-intime,intime,linear,amt,mods,pn=tab.pn}
-		me{b,len-intime,eas,0,mods,pn=tab.pn}
+		ease{b-intime,intime,linear,amt,mods,pn=tab.pn}
+		ease{b,len-intime,eas,0,mods,pn=tab.pn}
 	end
 	local function mod_bounce2(t)
 		local pn = t.pn
 		local beat,length,ease1,ease2,amt,mod,pn = t[1],t[2],t[3],t[4],t[5],t[6],t.plr
-		me{beat, (length/2), ease1, amt, mod, plr=pn}
-		me{beat+(length/2), (length/2), ease2, -amt, mod, plr=pn}
+		ease{beat, (length/2), ease1, amt, mod, plr=pn}
+		ease{beat+(length/2), (length/2), ease2, -amt, mod, plr=pn}
 	end
 	local function mod_ease(beat, len, str1, str2, mod, t, eas, pn)
 		if t == 'end' then len = len - beat end
@@ -1974,7 +2082,52 @@ function initCommand()
 		mod_ease(beat - off, (length/2), start, apex, tostring(mod), 'len', inEase,pn)
 		mod_ease((beat+(length/2)) - off, (length/2), apex, start, tostring(mod), 'len', outEase,pn)
 	end
-	me{0,4,inOutSine,360,'rotatex'}
+	local function mod_message(tab)
+		func{tab[1], function() debugPrint(tab[2]) end}
+	end
+	
+	function mod_insert(beat, len, modstring, t, pn)
+		local string_gmatch = string.gfind or string.gmatch
+		if t == 'end' then len = len - beat end
+		for str in string_gmatch(modstring, '[^,]+') do
+			local str = string.gsub(str, '%%', '')
+			local activation_rate = 1
+			local percent = 100
+			local modname = nil
+			for part in string_gmatch(str, '[^ ]+') do
+				if string.find(part, '*') then
+					activation_rate = tonumber(string.sub(part, 2)) or activation_rate
+				elseif not string.find(part, '[^%d]') then
+					percent = tonumber(part) or (part == 'no' and 0) or percent
+				elseif string.find(part, '^%d+x$') then
+					local _, x = string.match(part, '^(%d+)x$')
+					modname = 'xmod'
+					percent = tonumber(x)
+				elseif string.find(part, '^c%d+$') then
+					local _, c = string.match(part, '^c(%d+)$')
+					modname = 'cmod'
+					percent = tonumber(c)
+				else
+					modname = part
+				end
+			end
+			if modname then
+				if activation_rate < 0 or activation_rate > 9998 then
+					set {beat, percent, modname, plr = pn}
+				elseif activation_rate == 0 then
+					-- do nothing
+				else -- activation_rate > 0
+					msg('modstring \'' .. str .. '\' needs a *-1 activation rate to work with the Mirin Template backend.')
+				end
+			end
+		end
+	end
+
+	local me = ease
+	local mpf = func
+	local m2 = func
+	local msg = mod_message
+	local mi = mod_insert
 end
 
 function updateCommand(elapsed,beat)
