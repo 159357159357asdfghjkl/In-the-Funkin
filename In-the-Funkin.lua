@@ -6,7 +6,7 @@ TEMPLATE = {}
 			READ MEEEEEEEE!
 	This version of modchart template is modified from TaroNuke's TEMPLATE 1, the file has many differences.
 	By comparing this version with my original modified version, i removed stuff from other modchart tools,
-	and add a ton of new stuff. e.g. it can use many mods from one ease
+	and add tons of new stuff. e.g. it can use many mods from one ease
 			now i will keep updating this shit instead of updating the old one
 ]]
 
@@ -697,15 +697,9 @@ modList = {
 	scalex = 0,
 	scaley = 0,
 	scalez = 0,
-	notetinyx = 0,
-	notetinyy = 0,
-	notetinyz = 0,
-	skewx = 0,
-	skewy = 0,
-	noteskewx = 0,
-	noteskewy = 0,
-	skew = 0,
-	noteskew = 0,
+	orient = 0,
+	movew = 1,
+	amovew = 1,
 }
 
 --column specific mods
@@ -713,17 +707,16 @@ for i=0,3 do
 	modList['movex'..i] = 0
 	modList['movey'..i] = 0
 	modList['movez'..i] = 0
+	modList['movew'..i] = 1
 	modList['amovex'..i] = 0
 	modList['amovey'..i] = 0
 	modList['amovez'..i] = 0
+	modList['amovew'..i] = 1
 	modList['dark'..i] = 0
 	modList['stealth'..i] = 0
 	modList['tinyx'..i] = 0
 	modList['tinyy'..i] = 0
 	modList['tinyz'..i] = 0
-	modList['notetinyx'..i] = 0
-	modList['notetinyy'..i] = 0
-	modList['notetinyz'..i] = 0
 	modList['confusion'..i] = 0
 	modList['confusionx'..i] = 0
 	modList['confusionxoffset'..i] = 0
@@ -739,12 +732,6 @@ for i=0,3 do
 	modList['zoomx'..i] = 0
 	modList['zoomy'..i] = 0
 	modList['zoomz'..i] = 0
-	modList['skew'..i] = 0
-	modList['skewx'..i] = 0
-	modList['skewy'..i] = 0
-	modList['noteskew'..i] = 0
-	modList['noteskewx'..i] = 0
-	modList['noteskewy'..i] = 0
 	modList['scalex'..i] = 0
 	modList['scaley'..i] = 0
 	modList['scalez'..i] = 0
@@ -830,6 +817,7 @@ function receptorAlpha(iCol,pn)
 	return alp
 end
 
+--to do: rewrite alpha stuff
 function arrowAlpha(fYOffset, iCol,pn)
 	local alp = 1
 	
@@ -1118,11 +1106,7 @@ function getScale(fYOffset, iCol, pn, sx, sy, isNote)
 	x = x + m.scalex + m['scalex'..iCol]
     y = y + m.scaley + m['scaley'..iCol]
 	z = z + m.scalez + m['scalez'..iCol]
-	if isNote then
-    x = x + m.zoomx + m['zoomx'..iCol]
-    y = y + m.zoomy + m['zoomy'..iCol]
-	z = z + m.zoomz + m['zoomz'..iCol]
-	end
+
     local angle = 0;
     local stretch = m.stretch + m['stretch'..iCol]
     local squish = m.squish + m['squish'..iCol]
@@ -1134,11 +1118,6 @@ function getScale(fYOffset, iCol, pn, sx, sy, isNote)
 	x = x * math.pow( 0.5, m.tinyx ) * math.pow( 0.5, m['tinyx'..iCol] )
 	y = y * math.pow( 0.5, m.tinyy ) * math.pow( 0.5, m['tinyy'..iCol] )
 	z = z * math.pow( 0.5, m.tinyz ) * math.pow( 0.5, m['tinyz'..iCol] )
-	if isNote then
-		x = x * math.pow( 0.5, m.notetinyx ) * math.pow( 0.5, m['notetinyx'..iCol] )
-		y = y * math.pow( 0.5, m.notetinyy ) * math.pow( 0.5, m['notetinyy'..iCol] )
-		z = z * math.pow( 0.5, m.notetinyz ) * math.pow( 0.5, m['notetinyz'..iCol] )
-	end
 
 	x = x * ((math.sin(angle * math.pi / 180) * squishY) + (math.cos(angle * math.pi / 180) * squishX));
 	x = x * ((math.sin(angle * math.pi / 180) * stretchY) + (math.cos(angle * math.pi / 180) * stretchX));
@@ -1148,16 +1127,18 @@ function getScale(fYOffset, iCol, pn, sx, sy, isNote)
 		return x,y
 end
 
-function getSkew(iCol,pn,isNote)
-	local m = activeMods[pn]
-	local x = m.skewx + m.skew + m['skew'..iCol] + m['skewx'..iCol]
-	local y = m.skewy + m.skew + m['skew'..iCol] + m['skewy'..iCol]
-	if isNote then
-		x = x + m.noteskewx + m.noteskew + m['noteskew'..iCol] + m['noteskewx'..iCol]
-		y = y + m.noteskewy + m.noteskew + m['noteskew'..iCol] + m['noteskewy'..iCol]
-	end
-	return x,y
+function cameraEffects(pn)
+    local m = activeMods[pn]
+	local xpos, ypos, rotz, alpha, zoom = 0, 0, 0, 0, 0
+	xpos = xpos + activeMods[1].camx
+	ypos = ypos + activeMods[1].camy
+	rotz = rotz + activeMods[1].camangle + activeMods[1].camwag * math.sin(beat*math.pi)
+	alpha = alpha + activeMods[1].camalpha
+	zoom = zoom + activeMods[1].camzoom
+
+	return xpos, ypos, rotz, alpha, zoom
 end
+
 function arrowEffects(fYOffset, iCol, pn)
     local m = activeMods[pn]
 	
@@ -1168,6 +1149,9 @@ function arrowEffects(fYOffset, iCol, pn)
 	end
 	if m.dizzy ~= 0 then
 		rotz = rotz + m.dizzy*fYOffset
+	end
+	if m.orient ~= 0 then
+		rotz = rotz + xpos * m.orient
 	end
     if m.drunk ~= 0 then
         xpos = xpos + m.drunk * math.cos(getSongPosition()*0.001 * (1 + m.drunkspeed) + iCol * ((m.drunkoffset * 0.2) + 0.2) + fYOffset * ((m.drunkperiod * 10) + 10) / screenHeight) * ARROW_SIZE * 0.5;
@@ -1665,18 +1649,6 @@ function arrowEffects(fYOffset, iCol, pn)
 		ypos = ypos - r.y*mult + mult
 		zpos = zpos - r.z*mult + mult
 	end
-	if m.rotationx ~= 0 or m.rotationy ~= 0 or m.rotationz ~= 0 then
-		local rotation = RotationXYZ(m.rotationx, m.rotationy, m.rotationz)
-		local r = {
-		x = rotation.m00+rotation.m01+rotation.m02+rotation.m03,
-		y = rotation.m10+rotation.m11+rotation.m12+rotation.m13,
-		z = rotation.m20+rotation.m21+rotation.m22+rotation.m23
-		}
-		local mult = ARROW_SIZE*1.5
-		xpos = xpos + r.x*mult - mult
-		ypos = ypos + r.y*mult - mult
-		zpos = zpos + r.z*mult - mult
-	end
     return xpos, ypos, rotz, zpos
     
 end
@@ -1831,10 +1803,10 @@ function TEMPLATE.update(elapsed)
 	-- ACTUALLY APPLY THE RESULTS OF THE ABOVE CALCULATIONS TO THE NOTES
 	---------------------------------------
 
-	setCamNotes(activeMods[1].camx,activeMods[1].camy,activeMods[1].camangle + activeMods[1].camwag * math.sin(beat*math.pi),activeMods[1].camalpha,activeMods[1].camzoom)
+	local camx, camy, camrotz, camalpha, camzoom = cameraEffects(1)
+	setCamNotes(camx,camy,camrotz,camalpha,camzoom)
 	
 
-			
 	if songStarted then
 		for pn=1,2 do
 			local xmod = activeMods[pn].xmod
@@ -1853,14 +1825,14 @@ function TEMPLATE.update(elapsed)
 			
 
 			local scalex, scaley = getScale(0, col, pn, defaultscale[c+1].x, defaultscale[c+1].y, false)
-	local zNear,zFar = 0,100
-	local zRange = zNear - zFar
+
 	local fov = 90
 	local tanHalfFOV = math.tan(math.rad(fov/2))
-
+	local m = activeMods[pn]
+	local fakew = m.movew*m['movew'..col]*m.amovew*m['amovew'..col]
 			local origin={x=getPropertyFromGroup("strumLineNotes",c,"x") - (screenWidth/2),y=getPropertyFromGroup("strumLineNotes",c,"y") - (screenHeight/2),z=zp}
 
-			local pos={x=origin.x,y=origin.y,z=origin.z/1000-1}
+			local pos={x=origin.x,y=origin.y,z=origin.z/1000-fakew}
 			local X = pos.x*(1/tanHalfFOV)/-pos.z+(screenWidth/2)
 			local Y = pos.y/(1/tanHalfFOV)/-pos.z+(screenHeight/2)
 			setPropertyFromGroup('strumLineNotes', c, 'x', X)
@@ -1874,21 +1846,7 @@ setPropertyFromGroup('strumLineNotes', c, 'scale.x', scalex * scale)
 
 setPropertyFromGroup("strumLineNotes",c,"scale.x",getPropertyFromGroup("strumLineNotes",c,"scale.x")*zoom)
 setPropertyFromGroup("strumLineNotes",c,"scale.y",getPropertyFromGroup("strumLineNotes",c,"scale.y")*zoom)
-			if version == 'specific' then
-				local xskew,yskew = getSkew(col,pn,false)
-				setPropertyFromGroup("strumLineNotes",c,"skew.x",xskew)
-				setPropertyFromGroup("strumLineNotes",c,"skew.y",yskew)
 
-				local rotx,roty,rotz = receptorRotation(col,pn)
-				local rotation = RotationXYZ(rotx,roty,rotz)
-				local matToVec = {
-				  x = rotation.m00+rotation.m01+rotation.m02+rotation.m03,
-				  y = rotation.m10+rotation.m11+rotation.m12+rotation.m13,
-				  z = rotation.m20+rotation.m21+rotation.m22+rotation.m23
-				  }
-				  setPropertyFromGroup("strumLineNotes",c,"rotation.x",rotx)
-				  setPropertyFromGroup("strumLineNotes",c,"rotation.y",roty)
-			end
 				--local scrollSpeed = xmod * activeMods[pn]['xmod'..col] * (1 - 2*getReverseForCol(col,pn))
 				--setLaneScrollspeed(c,scrollSpeed)
 				
@@ -1934,30 +1892,24 @@ setPropertyFromGroup("strumLineNotes",c,"scale.y",getPropertyFromGroup("strumLin
 					local xa2, ya2 = arrowEffects(ypos2-defaulty, col, pn)
 
 					--if scrollSpeed >= 0 then
-				setPropertyFromGroup("notes",v,"angle",math.deg(math.atan2(((ypos2 + ya2)-(ypos + ya))*100,(xa2-xa)*100) + math.pi/2))
+				setPropertyFromGroup("notes",v,"angle",180+math.deg(math.atan2(((ypos2 + ya2)-(ypos + ya))*100,(xa2-xa)*100) + math.pi/2))
 					--else
 					--	note.angle = 180+math.deg(math.atan2(((ypos2 + ya2)-(ypos + ya))*100,(xa2-xa)*100) + math.pi/2)
 					--end
 				else
 					setPropertyFromGroup("notes",v,"angle",rz)
 				end
-                setPropertyFromGroup("notes",v,"x",defaultx + xa + (getPropertyFromGroup('notes',v,"isSustainNote") and 35 or 0))
-            	setPropertyFromGroup("notes",v,"y",ypos + ya + (getPropertyFromGroup('notes',v,"isSustainNote") and 35 or 0))
+			local m = activeMods[pn]
+			local fakew = m.movew*m['movew'..col]*m.amovew*m['amovew'..col]
+                setPropertyFromGroup("notes",v,"x",defaultx + xa + (isSus and fakew*getPropertyFromGroup('notes',v,"offsetX") or 0))
+            	setPropertyFromGroup("notes",v,"y",ypos + ya + (isSus and fakew*getPropertyFromGroup('notes',v,"offsetY") or 0))
             	setPropertyFromGroup("notes",v,"alpha",alp)
-				local susend = string.find(string.lower(getPropertyFromGroup('notes', v, 'animation.curAnim.name')), 'end') or string.find(string.lower(getPropertyFromGroup('notes', v, 'animation.curAnim.name')), 'tail')
-				if isSus and not susend then
-					setPropertyFromGroup("notes",v,"scale.y",scrollSpeed*activeMods[pn].xmod*(stepCrochet / 100 * 1.05)*getPropertyFromGroup('notes',v,"scale.y"))
-				else
-					setPropertyFromGroup("notes",v,"scale.y",(getPropertyFromGroup('notes',v,"scale.y")* zoom))
-				end
 
-
-    local zNear,zFar = 0,100
-	local zRange = zNear - zFar
 	local fov = 90
 	local tanHalfFOV = math.tan(math.rad(fov/2))
 			local origin={x=getPropertyFromGroup('notes',v,"x") - (screenWidth/2),y= getPropertyFromGroup('notes',v,"y") - (screenHeight/2),z=za}
-			local pos={x=origin.x,y=origin.y,z=origin.z/1000-1}
+
+			local pos={x=origin.x,y=origin.y,z=origin.z/1000-fakew}
 
 			local X = pos.x*(1/tanHalfFOV)/-pos.z+(screenWidth/2)
 			local Y = pos.y/(1/tanHalfFOV)/-pos.z+(screenHeight/2)
@@ -1973,22 +1925,6 @@ setPropertyFromGroup("strumLineNotes",c,"scale.y",getPropertyFromGroup("strumLin
 			setPropertyFromGroup("notes",v,"scale.x",(getPropertyFromGroup('notes',v,"scale.x")*zoom))
 
   			setPropertyFromGroup("notes",v,"scale.y",(getPropertyFromGroup('notes',v,"scale.y")*(getPropertyFromGroup('notes',v,"isSustainNote") and 1 or zoom)))
-
-			if version == 'specific' then
-			  local xskew,yskew = getSkew(col,pn,true)
-			  setPropertyFromGroup("notes",v,"skew.x",xskew)
-			  setPropertyFromGroup("notes",v,"skew.y",yskew)
-
-			  local rotx,roty,rotz = arrowRotation(ypos-defaulty,col,pn,getPropertyFromGroup('notes',v,"beat"))
-			  local rotation = RotationXYZ(rotx,roty,rotz)
-			  local matToVec = {
-				x = rotation.m00+rotation.m01+rotation.m02+rotation.m03,
-				y = rotation.m10+rotation.m11+rotation.m12+rotation.m13,
-				z = rotation.m20+rotation.m21+rotation.m22+rotation.m23
-				}
-			  setPropertyFromGroup("notes",v,"rotation.x",matToVec.x)
-			  setPropertyFromGroup("notes",v,"rotation.y",matToVec.y)
-			end
 
 			end
 			
@@ -2128,6 +2064,7 @@ function initCommand()
 	local m2 = func
 	local msg = mod_message
 	local mi = mod_insert
+
 end
 
 function updateCommand(elapsed,beat)
