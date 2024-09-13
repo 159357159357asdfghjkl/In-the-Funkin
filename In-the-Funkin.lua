@@ -458,6 +458,7 @@ function quantize(f,interval)
 return int((f+interval/2)/interval)*interval
 end
 
+
 function RotationXYZ( rX, rY, rZ )
     local PI=math.pi
 	rX = rX*(PI/180)
@@ -583,9 +584,6 @@ modList = {
 	tornadoyoffset = 0,
 	tornadoyperiod = 0,
 	zoom = 0,
-	zoomx = 0,
-	zoomy = 0,
-	zoomz = 0,
 	squish = 0,
 	stretch = 0,
 	pulseinner = 0,
@@ -700,6 +698,7 @@ modList = {
 	orient = 0,
 	movew = 1,
 	amovew = 1,
+	waveoffset = 0,
 }
 
 --column specific mods
@@ -729,9 +728,6 @@ for i=0,3 do
 	modList['reverse'..i] = 0
 	modList['tiny'..i] = 0
 	modList['zoom'..i] = 0
-	modList['zoomx'..i] = 0
-	modList['zoomy'..i] = 0
-	modList['zoomz'..i] = 0
 	modList['scalex'..i] = 0
 	modList['scaley'..i] = 0
 	modList['scalez'..i] = 0
@@ -800,7 +796,33 @@ function TEMPLATE.setup()
 	end
 end
 
+local FADE_DIST_Y = 40
+function GetHiddenSudden(m)
+	return m.hidden * m.sudden
+end
+function GetHiddenEndLine(m)
+	return screenHeight / 2 +
+		FADE_DIST_Y * scale( GetHiddenSudden(m), 0., 1., -1.0, -1.25 ) +
+		screenHeight / 2 * m.hiddenoffset;
+end
 
+function GetHiddenStartLine(m)
+	return screenHeight / 2 +
+		FADE_DIST_Y * scale( GetHiddenSudden(m), 0., 1., 0.0, -0.25 ) +
+		screenHeight / 2 * m.hiddenoffset;
+end
+
+function GetSuddenEndLine(m)
+	return screenHeight / 2 +
+		FADE_DIST_Y * scale( GetHiddenSudden(m), 0., 1., -0.0, 0.25 ) +
+		screenHeight / 2 * m.suddenoffset;
+end
+
+function GetSuddenStartLine(m)
+	return screenHeight / 2 +
+		FADE_DIST_Y * scale( GetHiddenSudden(m), 0., 1., 1.0, 1.25 ) +
+		screenHeight / 2 * m.suddenoffset;
+end
 
 function receptorAlpha(iCol,pn)
 	local alp = 1
@@ -817,8 +839,7 @@ function receptorAlpha(iCol,pn)
 	return alp
 end
 
---to do: rewrite alpha stuff
-function arrowAlpha(fYOffset, iCol,pn)
+function arrowAlpha(fYPos, iCol,pn)
 	local alp = 1
 	
 	local m = activeMods[pn]
@@ -830,20 +851,14 @@ function arrowAlpha(fYOffset, iCol,pn)
 		alp = alp*(1-m.stealth)*(1-m['stealth'..iCol])
 	end
 	if m.hidden ~= 0 then
-		if fYOffset < m.hiddenoffset and fYOffset >= m.hiddenoffset-200 then
-			local hmult = -(fYOffset-m.hiddenoffset)/200
-			alp = alp*(1-hmult)*m.hidden
-		elseif fYOffset < m.hiddenoffset-100 then
-			alp = alp*(1-m.hidden)
-		end
+		local fHiddenVisibleAdjust = scale( fYPos, GetHiddenStartLine(m), GetHiddenEndLine(m), 0, -1 );
+		fHiddenVisibleAdjust = math.clamp( fHiddenVisibleAdjust, -1, 0 );
+		alp = alp + m.hidden * fHiddenVisibleAdjust;
 	end
 	if m.sudden ~= 0 then
-		if fYOffset > m.suddenoffset and fYOffset <= m.suddenoffset+200 then
-			local hmult = -(fYOffset-m.suddenoffset)/200
-			alp = alp*(1-hmult)*m.sudden
-		elseif fYOffset > m.suddenoffset+100 then
-			alp = alp*(1-m.sudden)
-		end
+		local fSuddenVisibleAdjust = scale( fYPos, GetSuddenStartLine(m), GetSuddenEndLine(m), -1, 0 );
+		fSuddenVisibleAdjust = math.clamp( fSuddenVisibleAdjust, -1, 0 );
+		alp = alp + m.sudden * fSuddenVisibleAdjust;
 	end
 	if m.blink ~= 0 then
 		local time = getSongPosition()/1000
@@ -853,7 +868,7 @@ function arrowAlpha(fYOffset, iCol,pn)
 	end
 	if m.randomvanish ~= 0 then
 		local fRealFadeDist = 80;
-		alp = alp + scale( math.abs(fYOffset-360), fRealFadeDist, 2*fRealFadeDist, -1, 0 ) * m.randomvanish;
+		alp = alp + scale( math.abs(fYPos-360), fRealFadeDist, 2*fRealFadeDist, -1, 0 ) * m.randomvanish;
 	end
 	return alp
 end
@@ -879,7 +894,7 @@ function getYAdjust(fYOffset, iCol, pn)
 	local yadj = 0
 	local fScrollSpeed = 1
 	if m.wave ~= 0 then
-		yadj =yadj + m.wave * 20 *math.sin( fYOffset/((m.waveperiod*38)+38) );
+		yadj =yadj + m.wave * 20 *math.sin( (m.waveoffset+fYOffset)/((m.waveperiod*38)+38) );
 	end
 	
 	if m.brake ~= 0 then
@@ -968,7 +983,6 @@ function getZoom(fYOffset, iCol, pn)
 	return fZoom
 end
 
---im fucked
 function receptorRotation(iCol,pn)
     local fRotationX, fRotationY, fRotationZ = 0, 0, 0
     local m = activeMods[pn]
@@ -1139,7 +1153,7 @@ function cameraEffects(pn)
 	return xpos, ypos, rotz, alpha, zoom
 end
 
-function arrowEffects(fYOffset, iCol, pn)
+function arrowEffects(fYOffset, iCol, pn, withreverse)
     local m = activeMods[pn]
 	
     local xpos, ypos, rotz, zpos = 0, 0, 0, 0
@@ -1215,10 +1229,11 @@ function arrowEffects(fYOffset, iCol, pn)
 		zpos = zpos + m['amovez'..iCol] + m.amovez
 	end
 	
+	if withreverse then
 	if m['reverse'..iCol] ~= 0 or m.reverse ~= 0 or m.split ~= 0 or m.cross ~= 0 or m.alternate ~= 0 or m.centered ~= 0 then
 		ypos = ypos + getReverseForCol(iCol,pn) * 450
 	end
-	
+	end
 	if m.flip ~= 0 then
 		local fDistance = ARROW_SIZE * 2 * (1.5 - iCol);
 		xpos = xpos + fDistance * m.flip;
@@ -1804,15 +1819,21 @@ function TEMPLATE.update(elapsed)
 	---------------------------------------
 
 	local camx, camy, camrotz, camalpha, camzoom = cameraEffects(1)
-	setCamNotes(camx,camy,camrotz,camalpha,camzoom)
-	
+	runHaxeCode([[
+		var cs:FlxCamera = getVar("camNotes");
+		cs.angle = ]]..camrotz..[[;
+		cs.x = ]]..camx..[[;
+		cs.y = ]]..camy..[[;
+		cs.alpha = ]]..camalpha..[[;
+		cs.zoom += ]]..camzoom..[[;
+	]])
 
 	if songStarted then
 		for pn=1,2 do
 			local xmod = activeMods[pn].xmod
 			for col=0,3 do
 				local c = (pn-1)*4 + col
-				local xp, yp, rz, zp = arrowEffects(0, col, pn)
+				local xp, yp, rz, zp = arrowEffects(0, col, pn, true)
 				local alp = receptorAlpha(col,pn)
 
 				--print('Areceptor '..c..' is '..tostring(receptor))
@@ -1883,7 +1904,7 @@ setPropertyFromGroup("strumLineNotes",c,"scale.y",getPropertyFromGroup("strumLin
 
 				local ypos = getYAdjust(defaulty - (getSongPosition() - targTime),col,pn) * scrollSpeeds * 0.45 - off + ARROW_SIZE / 4
 					local zoom = getZoom(ypos-defaulty,col,pn)
-				local xa, ya, rz, za = arrowEffects(ypos-defaulty, col, pn)
+				local xa, ya, rz, za = arrowEffects(ypos-defaulty, col, pn, true)
 				local alp = arrowAlpha(ypos-defaulty, col, pn)
 			    local scalex, scaley = getScale(ypos-defaulty, col, pn, defaultscale[c+1].x, defaultscale[c+1].y, true)
 				if getPropertyFromGroup('notes',v,"isSustainNote") --[[and not note.isParent]] then
@@ -1901,8 +1922,8 @@ setPropertyFromGroup("strumLineNotes",c,"scale.y",getPropertyFromGroup("strumLin
 				end
 			local m = activeMods[pn]
 			local fakew = m.movew*m['movew'..col]*m.amovew*m['amovew'..col]
-                setPropertyFromGroup("notes",v,"x",defaultx + xa + (isSus and fakew*getPropertyFromGroup('notes',v,"offsetX") or 0))
-            	setPropertyFromGroup("notes",v,"y",ypos + ya + (isSus and fakew*getPropertyFromGroup('notes',v,"offsetY") or 0))
+                setPropertyFromGroup("notes",v,"x",defaultx + xa + (isSus and -(za/1000-fakew)*getPropertyFromGroup('notes',v,"offsetX") or 0))
+            	setPropertyFromGroup("notes",v,"y",ypos + ya + (isSus and -(za/1000-fakew)*getPropertyFromGroup('notes',v,"offsetY") or 0))
             	setPropertyFromGroup("notes",v,"alpha",alp)
 
 	local fov = 90
@@ -1935,6 +1956,26 @@ setPropertyFromGroup("strumLineNotes",c,"scale.y",getPropertyFromGroup("strumLin
 end
 
 function onCreatePost()
+	runHaxeCode([[
+    var camNotes:FlxCamera = new FlxCamera();
+    camNotes.height = game.camHUD.height;
+    camNotes.bgColor = 0x00000000;
+    
+    FlxG.cameras.remove(game.camHUD, false);
+    FlxG.cameras.remove(game.camOther, false);
+
+    FlxG.cameras.add(camNotes, false);
+    FlxG.cameras.add(game.camHUD, false);
+    FlxG.cameras.add(game.camOther, false);
+
+    game.notes.cameras = [camNotes];
+    game.strumLineNotes.cameras = [camNotes];
+    camNotes.angle = game.camHUD.angle;
+    camNotes.zoom = game.camHUD.zoom;
+    camNotes.x = game.camHUD.x;
+    camNotes.y = game.camHUD.y;
+	setVar("camNotes",camNotes);
+]])
 	TEMPLATE.InitMods()
 
 	--WRITE MODS HERE! 
@@ -2064,7 +2105,7 @@ function initCommand()
 	local m2 = func
 	local msg = mod_message
 	local mi = mod_insert
-
+me{0,4,linear,180,'camangle'}
 end
 
 function updateCommand(elapsed,beat)
