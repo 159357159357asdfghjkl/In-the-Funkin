@@ -20,7 +20,7 @@ TEMPLATE = {}
 ---------------------------------------------------------------------------------------
 ----------------------DON'T TOUCH IT KIDDO---------------------------------------------
 ---------------------------------------------------------------------------------------
-			
+
 -- Adapted from
 -- Tweener's easing functions (Penner's Easing Equations)
 -- and http://code.google.com/p/tweener/ (jstweener javascript version)
@@ -451,13 +451,13 @@ function triangle( angle )
 	else
 		return -4.0 + (result * 2.0)
 	end
-	
+
 end
 
-function quantize(f,interval)
-return int((f+interval/2)/interval)*interval
+int = math.floor
+function quantize(f,fRoundInterval)
+return int((f + fRoundInterval / 2) / fRoundInterval) * fRoundInterval
 end
-
 
 function RotationXYZ( rX, rY, rZ )
     local PI=math.pi
@@ -481,11 +481,14 @@ function RotationXYZ( rX, rY, rZ )
 
 end
 
+function round(val)
+	return math.floor(val+.5)
+end
 function selectTanType(angle,is_csc)
 if is_csc ~= 0 then
-return fastCsc(angle)
+return 1 / math.sin(angle)
 else
-return fastTan(angle)
+return math.sin(angle) / math.cos(angle)
 end
 end
 
@@ -682,13 +685,7 @@ modList = {
 	tantipsyz = 0,
 	tantipsyzspeed = 0,
 	tantipsyzoffset = 0,
-	confusionx = 0,
-	confusionxoffset = 0,
-	confusiony = 0,
-	confusionyoffset = 0,
 	confusionoffset = 0,
-	twirl = 0,
-	roll = 0,
 	rotatex = 0,
 	rotatey = 0,
 	rotatez = 0,
@@ -699,6 +696,7 @@ modList = {
 	movew = 1,
 	amovew = 1,
 	waveoffset = 0,
+	cmod = -1
 }
 
 --column specific mods
@@ -717,10 +715,6 @@ for i=0,3 do
 	modList['tinyy'..i] = 0
 	modList['tinyz'..i] = 0
 	modList['confusion'..i] = 0
-	modList['confusionx'..i] = 0
-	modList['confusionxoffset'..i] = 0
-	modList['confusiony'..i] = 0
-	modList['confusionyoffset'..i] = 0
 	modList['confusionoffset'..i] = 0
 	modList['rotatex'..i] = 0
 	modList['rotatey'..i] = 0
@@ -787,7 +781,7 @@ function TEMPLATE.setup()
 	function modtable_compare(a,b)
 		return a[1] < b[1]
 	end
-	
+
 	if table.getn(event) > 1 then
 		table.sort(event, modtable_compare)
 	end
@@ -826,24 +820,24 @@ end
 
 function receptorAlpha(iCol,pn)
 	local alp = 1
-	
+
 	local m = activeMods[pn]
-	
+
 	if m.alpha ~= 1 then
 		alp = alp*m.alpha
 	end
 	if m.dark ~= 0 or m['dark'..iCol] ~= 0 then
 		alp = alp*(1-m.dark)*(1-m['dark'..iCol])
 	end
-	
+
 	return alp
 end
 
 function arrowAlpha(fYPos, iCol,pn)
 	local alp = 1
-	
+
 	local m = activeMods[pn]
-	
+
 	if m.alpha ~= 1 then
 		alp = alp*m.alpha
 	end
@@ -876,9 +870,9 @@ end
 function getReverseForCol(iCol,pn)
 	local m = activeMods[pn]
 	local val = 0
-	
+
 	val = val+m.reverse+m['reverse'..iCol]
-	
+
 	if m.split ~= 0 and iCol > 1 then val = val+m.split end
 	if m.cross ~= 0 and iCol == 1 or iCol == 2 then val = val+m.cross end
 	if m.alternate ~= 0 and iCol % 2 == 1 then val = val+m.alternate end
@@ -888,40 +882,40 @@ function getReverseForCol(iCol,pn)
 end
 
 function getYAdjust(fYOffset, iCol, pn)
-	
+
 	local m = activeMods[pn]
-	
+
 	local yadj = 0
 	local fScrollSpeed = 1
 	if m.wave ~= 0 then
 		yadj =yadj + m.wave * 20 *math.sin( (m.waveoffset+fYOffset)/((m.waveperiod*38)+38) );
 	end
-	
+
 	if m.brake ~= 0 then
 
 		local fEffectHeight = 500;
 		local fScale = scale( fYOffset, 0, fEffectHeight, 0, 1 )
-		local fNewYOffset = fYOffset * fScale; 
+		local fNewYOffset = fYOffset * fScale;
 		local fBrakeYAdjust = m.brake * (fNewYOffset - fYOffset)
-		
+
 		fBrakeYAdjust = math.clamp( fBrakeYAdjust, -400, 400 )
 		yadj = yadj+fBrakeYAdjust;
-	
+
 	end
 
 	if m.boost ~= 0 then
 
 		local fEffectHeight = 500;
-		local fNewYOffset = fYOffset * 1.5 / ((fYOffset+fEffectHeight/1.2)/fEffectHeight); 
+		local fNewYOffset = fYOffset * 1.5 / ((fYOffset+fEffectHeight/1.2)/fEffectHeight);
 		local fAccelYAdjust = m.boost * (fNewYOffset - fYOffset)
-		
+
 		fAccelYAdjust = math.clamp( fAccelYAdjust, -400, 400 )
 		yadj = yadj+fAccelYAdjust;
-	
+
 	end
-	
+
     fYOffset = fYOffset+yadj
-    
+
 	if m.boomerang ~= 0 then
 		fYOffset = ((-1*fYOffset*fYOffset/500) + 1.5*fYOffset)*m.boomerang
 	end
@@ -983,135 +977,6 @@ function getZoom(fYOffset, iCol, pn)
 	return fZoom
 end
 
-function receptorRotation(iCol,pn)
-    local fRotationX, fRotationY, fRotationZ = 0, 0, 0
-    local m = activeMods[pn]
-    if m['confusionx'..iCol]~= 0 then
-		fRotationX = fRotationX +m['confusionx'..iCol] * 180.0/math.pi;
-	end
-	if m.confusionxoffset ~= 0 then
-		fRotationX = fRotationX +m.confusionxoffset * 180.0/math.pi;
-	end
-	if m['confusionxoffset'..iCol] ~= 0 then
-		fRotationX = fRotationX +m['confusionxoffset'..iCol] * 180.0/math.pi;
-	end
-	if m.confusionx ~= 0 then
-		local fConfRotation = beat
-		local PI = math.pi
-		fConfRotation = fConfRotation * m.confusionx
-		fConfRotation = fConfRotation % ( 2*PI )
-		fConfRotation = fConfRotation*(-180/PI)
-		fRotationX = fRotationX + fConfRotation;
-	end
-	if m['confusiony'..iCol] ~= 0 then
-		fRotationY = fRotationY + (m['confusiony'..iCol] * 180.0/math.pi)
-	end
-	if m['confusionyoffset'..iCol] ~= 0 then
-		fRotationY = fRotationY + (m['confusionyoffset'..iCol] * 180.0/math.pi)
-	end
-	if m.confusionyoffset ~= 0 then
-		fRotationY = fRotationY + m.confusionyoffset * 180.0/math.pi
-	end
-	if m.confusiony ~= 0 then
-		local fConfRotation = beat
-		local PI=math.pi
-		fConfRotation = fConfRotation * m.confusiony
-		fConfRotation = fConfRotation%(2*PI )
-		fConfRotation = fConfRotation *(-180/PI)
-		fRotationY = fRotationY + fConfRotation
-	end
-	if m['confusion'..iCol] ~= 0 then
-		fRotationZ = fRotationZ+m['confusion'..iCol] * 180.0/math.pi
-	end
-	if m.confusionoffset ~= 0 then
-		fRotationZ = fRotationZ+m.confusionoffset * 180.0/math.pi
-	end
-	if m['confusionoffset'..iCol] ~= 0 then
-		fRotationZ = fRotationZ+m['confusionoffset'..iCol] * 180.0/math.pi
-	end
-	if m.confusion ~= 0 then
-		local fConfRotation = beat
-		local PI=math.pi
-		fConfRotation = fConfRotation * m.confusion
-		fConfRotation = fConfRotation%( 2*PI );
-		fConfRotation = fConfRotation*(-180/PI)
-		fRotationZ = fRotationZ*fConfRotation;
-	end
-    return fRotationX, fRotationY, fRotationZ
-end
-
-function arrowRotation(fYOffset,iCol,pn,noteBeat)
-    local fRotationX, fRotationY, fRotationZ = 0, 0, 0
-    local m = activeMods[pn]
-    if m['confusionx'..iCol]~= 0 then
-		fRotationX = fRotationX +m['confusionx'..iCol] * 180.0/math.pi;
-	end
-	if m.confusionxoffset ~= 0 then
-		fRotationX = fRotationX +confusionxoffset * 180.0/math.pi;
-	end
-	if m['confusionxoffset'..iCol] ~= 0 then
-		fRotationX = fRotationX +m['confusionxoffset'..iCol] * 180.0/math.pi;
-	end
-	if m.confusionx ~= 0 then
-		local fConfRotation = beat
-		fConfRotation = fConfRotation * m.confusionx
-		fConfRotation = fConfRotation % ( 2*PI )
-		fConfRotation = fConfRotation*(-180/PI)
-		fRotationX = fRotationX + fConfRotation;
-	end
-	if m.roll ~= 0 then
-		fRotationX = fRotationX + (m.roll * fYOffset/2)
-	end
-	if m['confusiony'..iCol] ~= 0 then
-		fRotationY = fRotationY + (m['confusiony'..iCol] * 180.0/math.pi)
-	end
-	if m['confusionyoffset'..iCol] ~= 0 then
-		fRotationY = fRotationY + (m['confusionyoffset'..iCol] * 180.0/math.pi)
-	end
-	if m.confusionyoffset ~= 0 then
-		fRotationY = fRotationY + m.confusionyoffset * 180.0/math.pi
-	end
-	if m.confusiony ~= 0 then
-		local fConfRotation = beat
-		local PI=math.pi
-		fConfRotation = fConfRotation * m.confusiony
-		fConfRotation = fConfRotation%(2*PI )
-		fConfRotation = fConfRotation *(-180/PI)
-		fRotationY = fRotationY + fConfRotation
-	end
-	if m.twirl ~= 0 then
-		fRotationY = fRotationY + (m.twirl * fYOffset/2)
-	end
-
-	if m.dizzy ~= 0 then
-	local fSongBeat = beat
-	local PI = math.pi
-	local fDizzyRotation = noteBeat - fSongBeat
-		fDizzyRotation = fDizzyRotation * m.dizzy
-		fDizzyRotation = fDizzyRotation % (2*PI)
-		fDizzyRotation = fDizzyRotation*(180/PI)
-		fRotationZ = fRotationZ+fDizzyRotation
-	end
-		if m['confusion'..iCol] ~= 0 then
-		fRotationZ = fRotationZ+m['confusion'..iCol] * 180.0/math.pi
-	end
-	if m.confusionoffset ~= 0 then
-		fRotationZ = fRotationZ+m.confusionoffset * 180.0/math.pi
-	end
-	if m['confusionoffset'..iCol] ~= 0 then
-		fRotationZ = fRotationZ+m['confusionoffset'..iCol] * 180.0/math.pi
-	end
-	if m.confusion ~= 0 then
-		local fConfRotation = beat
-		local PI=math.pi
-		fConfRotation = fConfRotation * m.confusion
-		fConfRotation = fConfRotation%( 2*PI );
-		fConfRotation = fConfRotation*(-180/PI)
-		fRotationZ = fRotationZ*fConfRotation;
-	end
-    return fRotationX, fRotationY, fRotationZ
-end
-
 function getScale(fYOffset, iCol, pn, sx, sy, isNote)
     local x = sx
     local y = sy
@@ -1155,11 +1020,11 @@ end
 
 function arrowEffects(fYOffset, iCol, pn, withreverse)
     local m = activeMods[pn]
-	
+
     local xpos, ypos, rotz, zpos = 0, 0, 0, 0
-	
-	if m['confusion'..iCol] ~= 0 or m.confusion ~= 0 ~= 0 then
-		rotz = rotz + m['confusion'..iCol] + m.confusion
+
+	if m['confusion'..iCol] ~= 0 or m.confusion ~= 0 or m.confusionoffset ~= 0 or m['confusionoffset'..iCol]~= 0 then
+		rotz = rotz + m['confusion'..iCol] + m.confusion + m['confusionoffset'..iCol] + m.confusionoffset
 	end
 	if m.dizzy ~= 0 then
 		rotz = rotz + m.dizzy*fYOffset
@@ -1209,7 +1074,7 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
     if m.atipsy ~= 0 then
         ypos = ypos + m.atipsy * ( math.cos( getSongPosition()*0.001 *(1.2) + iCol*(2.0) + 1*(0.2) ) * ARROW_SIZE*0.4 )
     end
-	
+
 	if m['movex'..iCol] ~= 0 or m.movex ~= 0 then
 		xpos = xpos + m['movex'..iCol] + m.movex
 	end
@@ -1228,7 +1093,7 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 	if m['amovez'..iCol] ~= 0 or m.amovez ~= 0 then
 		zpos = zpos + m['amovez'..iCol] + m.amovez
 	end
-	
+
 	if withreverse then
 	if m['reverse'..iCol] ~= 0 or m.reverse ~= 0 or m.split ~= 0 or m.cross ~= 0 or m.alternate ~= 0 or m.centered ~= 0 then
 		ypos = ypos + getReverseForCol(iCol,pn) * 450
@@ -1247,34 +1112,34 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 	if m.divide ~= 0 then
 		xpos = xpos + (iCol >= 2 and 1 or -1) * ARROW_SIZE
 	end
-	
+
 	if m.beat ~= 0 then
-			
+
 		local fBeatStrength = m.beat;
-		
+
 		local fAccelTime = 0.3;
 		local fTotalTime = 0.7;
-		
+
 		-- If the song is really fast, slow down the rate, but speed up the
 		-- acceleration to compensate or it'll look weird.
 		fBeat = beat + fAccelTime;
-		
+
 		local bEvenBeat = false;
 		if math.floor(fBeat) % 2 ~= 0 then
 			bEvenBeat = true;
 		end
-		
+
 		fBeat = fBeat-math.floor( fBeat );
 		fBeat = fBeat+1;
 		fBeat = fBeat-math.floor( fBeat );
-		
+
 		if fBeat<fTotalTime then
-		
+
 			local fAmount = 0;
 			if fBeat < fAccelTime then
 				fAmount = scale( fBeat, 0.0, fAccelTime, 0.0, 1.0);
 				fAmount = fAmount*fAmount;
-			else 
+			else
 				--fBeat < fTotalTime
 				fAmount = scale( fBeat, fAccelTime, fTotalTime, 1.0, 0.0);
 				fAmount = 1 - (1-fAmount) * (1-fAmount);
@@ -1285,40 +1150,40 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 			end
 
 			local fShift = 40.0*fAmount*math.sin( ((fYOffset/30.0)) + (math.pi/2) );
-			
+
 			xpos = xpos + fBeatStrength * fShift
-			
+
 		end
-	
+
 	end
 
 	if m.beaty ~= 0 then
-			
+
 		local fBeatStrength = m.beaty;
-		
+
 		local fAccelTime = 0.3;
 		local fTotalTime = 0.7;
-		
+
 		-- If the song is really fast, slow down the rate, but speed up the
 		-- acceleration to compensate or it'll look weird.
 		fBeat = beat + fAccelTime;
-		
+
 		local bEvenBeat = false;
 		if math.floor(fBeat) % 2 ~= 0 then
 			bEvenBeat = true;
 		end
-		
+
 		fBeat = fBeat-math.floor( fBeat );
 		fBeat = fBeat+1;
 		fBeat = fBeat-math.floor( fBeat );
-		
+
 		if fBeat<fTotalTime then
-		
+
 			local fAmount = 0;
 			if fBeat < fAccelTime then
 				fAmount = scale( fBeat, 0.0, fAccelTime, 0.0, 1.0);
 				fAmount = fAmount*fAmount;
-			else 
+			else
 				--fBeat < fTotalTime
 				fAmount = scale( fBeat, fAccelTime, fTotalTime, 1.0, 0.0);
 				fAmount = 1 - (1-fAmount) * (1-fAmount);
@@ -1329,11 +1194,11 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 			end
 
 			local fShift = 40.0*fAmount*math.sin( ((fYOffset/30.0)) + (math.pi/2) );
-			
+
 			ypos = ypos + fBeatStrength * fShift
-			
+
 		end
-	
+
 	end
 
 	if m.sawtooth ~= 0 then
@@ -1366,7 +1231,7 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 		local fBounceAmt = math.abs( math.sin( ( (fYOffset + (1.0 * (m.bounceyoffset) ) ) / ( 60 + m.bounceyperiod*60) ) ) );
 		ypos = ypos + m.bouncey * ARROW_SIZE * 0.5 * fBounceAmt;
 	end
-	
+
 	if m.xmode ~= 0 then
 		xpos = xpos + m.xmode * (pn == 2 and -fYOffset or fYOffset)
 	end
@@ -1378,20 +1243,20 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 	end
 
 	if m.zigzag ~= 0 then
-		local fResult = triangle( (math.pi * (1/(m.zigzagperiod+1)) * 
+		local fResult = triangle( (math.pi * (1/(m.zigzagperiod+1)) *
 		((fYOffset+(100.0*(m.zigzagoffset)))/ARROW_SIZE) ) );
-	    
+
 		xpos = xpos + (m.zigzag*ARROW_SIZE/2) * fResult;
 	end
 
     if m.swap ~= 0 then
         xpos = xpos + screenWidth / 2 * m.swap * (pn == 2 and -1 or 1)
     end
-    
+
     if m.parabolax ~= 0 then
         xpos = xpos + m.parabolax * (fYOffset / ARROW_SIZE) * (fYOffset / ARROW_SIZE)
     end
-    
+
     if m.parabolay ~= 0 then
         ypos = ypos + m.parabolay * (fYOffset / ARROW_SIZE) * (fYOffset / ARROW_SIZE)
     end
@@ -1416,11 +1281,11 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 
 		local fMinX = 3.402823466*(10^38)
 		local fMaxX = 1.175494351*(10^-38)
-		
+
 		-- TODO: Don't index by PlayerNumber.
 		local xoff = {{92,204,316,428},{732,844,956,1068}}
 		for i=iStartCol,iEndCol do
-		
+
 			fMinX = math.min( fMinX, xoff[pn][i+1] );
 			fMaxX = math.max( fMaxX, xoff[pn][i+1] );
 	end
@@ -1429,7 +1294,7 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 		local fPositionBetween = scale( fRealPixelOffset, fMinX, fMaxX, -1, 1 );
 		local fRads = math.acos( fPositionBetween );
 		fRads = fRads + ((fYOffset + m.tornadooffset) * ((6 * m.tornadoperiod) + 6) / screenHeight)
-		
+
 		local fAdjustedPixelOffset = scale( math.cos(fRads), -1, 1, fMinX, fMaxX );
 
 		xpos = xpos + (fAdjustedPixelOffset - fRealPixelOffset) * m.tornado
@@ -1444,11 +1309,11 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 
 		local fMinX = 3.402823466*(10^38)
 		local fMaxX = 1.175494351*(10^-38)
-		
+
 		-- TODO: Don't index by PlayerNumber.
 		local xoff = {{92,204,316,428},{732,844,956,1068}}
 		for i=iStartCol,iEndCol do
-		
+
 			fMinX = math.min( fMinX, xoff[pn][i+1] );
 			fMaxX = math.max( fMaxX, xoff[pn][i+1] );
 	end
@@ -1457,7 +1322,7 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 		local fPositionBetween = scale( fRealPixelOffset, fMinX, fMaxX, -1, 1 );
 		local fRads = math.acos( fPositionBetween );
 		fRads = fRads + ((fYOffset + m.tornadoyoffset) * ((6 * m.tornadoyperiod) + 6) / screenHeight)
-		
+
 		local fAdjustedPixelOffset = scale( math.cos(fRads), -1, 1, fMinX, fMaxX );
 
 		ypos = ypos + (fAdjustedPixelOffset - fRealPixelOffset) * m.tornadoy
@@ -1473,11 +1338,11 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 
 		local fMinX = 3.402823466*(10^38)
 		local fMaxX = 1.175494351*(10^-38)
-		
+
 		-- TODO: Don't index by PlayerNumber.
 
 		for i=iStartCol,iEndCol do
-		
+
 			fMinX = math.min( fMinX, xoff[pn][i+1] );
 			fMaxX = math.max( fMaxX, xoff[pn][i+1] );
 	end
@@ -1486,7 +1351,7 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 		local fPositionBetween = scale( fRealPixelOffset, fMinX, fMaxX, -1, 1 );
 		local fRads = math.acos( fPositionBetween );
 		fRads = fRads + ((fYOffset + m.tantornadooffset) * ((6 * m.tantornadoperiod) + 6) / screenHeight)
-		
+
 		local fAdjustedPixelOffset = scale( selectTanType(fRads,m.cosecant), -1, 1, fMinX, fMaxX );
 
 		xpos = xpos + (fAdjustedPixelOffset - fRealPixelOffset) * m.tantornado
@@ -1502,11 +1367,11 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 
 		local fMinX = 3.402823466*(10^38)
 		local fMaxX = 1.175494351*(10^-38)
-		
+
 		-- TODO: Don't index by PlayerNumber.
 
 		for i=iStartCol,iEndCol do
-		
+
 			fMinX = math.min( fMinX, xoff[pn][i+1] );
 			fMaxX = math.max( fMaxX, xoff[pn][i+1] );
 	end
@@ -1515,7 +1380,7 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 		local fPositionBetween = scale( fRealPixelOffset, fMinX, fMaxX, -1, 1 );
 		local fRads = math.acos( fPositionBetween );
 		fRads = fRads + ((fYOffset + m.tantornadozoffset) * ((6 * m.tantornadozperiod) + 6) / screenHeight)
-		
+
 		local fAdjustedPixelOffset = scale( selectTanType(fRads,m.cosecant), -1, 1, fMinX, fMaxX );
 
 		zpos =zpos + (fAdjustedPixelOffset - fRealPixelOffset) * m.tantornadoz
@@ -1551,11 +1416,11 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 
 		local fMinX = 3.402823466*(10^38)
 		local fMaxX = 1.175494351*(10^-38)
-		
+
 		-- TODO: Don't index by PlayerNumber.
 		local xoff = {{92,204,316,428},{732,844,956,1068}}
 		for i=iStartCol,iEndCol do
-		
+
 			fMinX = math.min( fMinX, xoff[pn][i+1] );
 			fMaxX = math.max( fMaxX, xoff[pn][i+1] );
 	end
@@ -1564,7 +1429,7 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 		local fPositionBetween = scale( fRealPixelOffset, fMinX, fMaxX, -1, 1 );
 		local fRads = math.acos( fPositionBetween );
 		fRads = fRads + ((fYOffset + m.tornadozoffset) * ((6 * m.tornadozperiod) + 6) / screenHeight)
-		
+
 		local fAdjustedPixelOffset = scale( math.cos(fRads), -1, 1, fMinX, fMaxX );
 
 		zpos = zpos + (fAdjustedPixelOffset - fRealPixelOffset) * m.tornadoz
@@ -1594,36 +1459,36 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 
 	if m.zigzagz ~= 0 then
 		local fResult = triangle( (math.pi * (1/(m.zigzagzperiod+1)) * ((fYOffset+(100.0*(m.zigzagzoffset)))/ARROW_SIZE) ) );
-	    
+
 		zpos = zpos + (m.zigzagz*ARROW_SIZE/2) * fResult;
 	end
 	if m.beatz ~= 0 then
-			
+
 		local fBeatStrength = m.beatz;
-		
+
 		local fAccelTime = 0.3;
 		local fTotalTime = 0.7;
-		
+
 		-- If the song is really fast, slow down the rate, but speed up the
 		-- acceleration to compensate or it'll look weird.
 		fBeat = beat + fAccelTime;
-		
+
 		local bEvenBeat = false;
 		if math.floor(fBeat) % 2 ~= 0 then
 			bEvenBeat = true;
 		end
-		
+
 		fBeat = fBeat-math.floor( fBeat );
 		fBeat = fBeat+1;
 		fBeat = fBeat-math.floor( fBeat );
-		
+
 		if fBeat<fTotalTime then
-		
+
 			local fAmount = 0;
 			if fBeat < fAccelTime then
 				fAmount = scale( fBeat, 0.0, fAccelTime, 0.0, 1.0);
 				fAmount = fAmount*fAmount;
-			else 
+			else
 				--fBeat < fTotalTime
 				fAmount = scale( fBeat, fAccelTime, fTotalTime, 1.0, 0.0);
 				fAmount = 1 - (1-fAmount) * (1-fAmount);
@@ -1634,11 +1499,11 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 			end
 
 			local fShift = 40.0*fAmount*math.sin( ((fYOffset/30.0)) + (math.pi/2) );
-			
+
 			zpos = zpos + fBeatStrength * fShift
-			
+
 		end
-	
+
 	end
 	if m.rotatex ~= 0 or m.rotatey ~= 0 or m.rotatez ~= 0 then
 		local rotation = RotationXYZ(m.rotatex, m.rotatey, m.rotatez)
@@ -1665,7 +1530,7 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 		zpos = zpos - r.z*mult + mult
 	end
     return xpos, ypos, rotz, zpos
-    
+
 end
 
 
@@ -1700,7 +1565,7 @@ function func(t)
 end
 
 function TEMPLATE.songStart()
-    
+
     downscroll = false
 
 	for i=0,7 do
@@ -1708,21 +1573,21 @@ function TEMPLATE.songStart()
                 defaultPositions[i+1].y = getPropertyFromGroup("strumLineNotes",i,"y")
         defaultscale[i+1].x = getPropertyFromGroup("strumLineNotes",i,"scale.x")
         defaultscale[i+1].y = getPropertyFromGroup("strumLineNotes",i,"scale.y")
-        
+
         --print(i .. ": " .. defaultPositions[i+1].x .. " " .. defaultPositions[i+1].y)
     end
-	
+
 	--fuck it, it's mods. You don't get a say here.
 	--(this is done to prevent a lot of bugs and weird cases)
 	storedScrollSpeed = 1.8
 	--storedScrollSpeed = scrollSpeed
-	
+
 	for pn=1,2 do
 		activeMods[pn].xmod = storedScrollSpeed
 	end
-	
+
 	songStarted = true
-	
+
 end
 
 function TEMPLATE.update(elapsed)
@@ -1737,7 +1602,7 @@ function TEMPLATE.update(elapsed)
 	-- v.startVal for specifying new start val
 	-- v.ex1, v.ex2 for the extra params of elastic and back eases
 	--------------------------------------------------------------
-	
+
 	while curmod <= #mods and beat > mods[curmod][1] do
 		local v = mods[curmod]
 		for i = 4, #v, 2 do
@@ -1746,11 +1611,11 @@ function TEMPLATE.update(elapsed)
 		if v.timing and v.timing == 'end' then
 			dur = v[2]-v[1]
 		end
-		
+
 		--print('launch attack '..mn..' at beat '..v[1])
-		
+
 		if v.plr and not v.pn then v.pn = v.plr end
-		
+
 		for pn=1,2 do
 			if not v.pn or pn == v.pn then
 				tweenStart[pn][mn] = v[1]
@@ -1770,10 +1635,10 @@ function TEMPLATE.update(elapsed)
 	end
 		curmod = curmod+1
 	end
-	
+
 	for pn=1,2 do
 		for _,v in pairs(modnames) do
-			
+
 			if isTweening[pn][v] then
 				local curtime = beat - tweenStart[pn][v]
 				local duration = tweenLen[pn][v]
@@ -1788,10 +1653,10 @@ function TEMPLATE.update(elapsed)
 			else
 				activeMods[pn][v] = targetMods[pn][v]
 			end
-			
+
 		end
 	end
-	
+
 	----------------------------------------
 	-- do this stuff every frame --
 	----------------------------------------
@@ -1803,7 +1668,7 @@ function TEMPLATE.update(elapsed)
 			end
 		end
 	end
-	
+
 	-----------------------------------------
 	-- event queue --event,curevent = {},1 --
 	-----------------------------------------
@@ -1843,7 +1708,7 @@ function TEMPLATE.update(elapsed)
 			setPropertyFromGroup('strumLineNotes', c, 'y', defaulty + yp)
                 setPropertyFromGroup("strumLineNotes",c,"angle",rz)
                 setPropertyFromGroup("strumLineNotes",c,"alpha",alp)
-			
+
 
 			local scalex, scaley = getScale(0, col, pn, defaultscale[c+1].x, defaultscale[c+1].y, false)
 
@@ -1870,36 +1735,37 @@ setPropertyFromGroup("strumLineNotes",c,"scale.y",getPropertyFromGroup("strumLin
 
 				--local scrollSpeed = xmod * activeMods[pn]['xmod'..col] * (1 - 2*getReverseForCol(col,pn))
 				--setLaneScrollspeed(c,scrollSpeed)
-				
+
 				--print('Breceptor '..c..' is '..tostring(receptor))
 
 			end
 		end
-		
+
 		--for i=1,getNumberOfNotes() do
 		--	local note = _G['note_'..i]
 
 		for v = 0, getProperty("notes.length")-1 do
 			if getPropertyFromGroup('notes',v,"alive") then
-				
+
 				--print(tostring(note)..' sus '..tostring(note.isSustain))
-				
+
 				local pn = 1
 				if getPropertyFromGroup('notes',v,"mustPress") then pn = 2 end
-				
-				
+
+
 				local xmod = activeMods[pn].xmod
-				
+
 				local isSus = getPropertyFromGroup('notes',v,"isSustainNote")
 				--local isParent = note.isParent
 				local col = getPropertyFromGroup('notes',v,"noteData")
 				local c = (pn-1)*4 + col
-				
+
 				local targTime = getPropertyFromGroup('notes',v,"strumTime")
-				
+
 				local defaultx, defaulty = defaultPositions[c+1].x, defaultPositions[c+1].y
-				local scrollSpeeds = xmod * activeMods[pn]['xmod'..col] * (1 - 2*getReverseForCol(col,pn)) * scrollSpeed
-				
+				local cmod = activeMods[pn].cmod
+				local scrollSpeeds = xmod * activeMods[pn]['xmod'..col] * (cmod > 0 and cmod or 1) * (1 - 2*getReverseForCol(col,pn)) * scrollSpeed
+
 				local off = (1 - 2*getReverseForCol(col,pn))
 
 				local ypos = getYAdjust(defaulty - (getSongPosition() - targTime),col,pn) * scrollSpeeds * 0.45 - off + ARROW_SIZE / 4
@@ -1936,21 +1802,28 @@ setPropertyFromGroup("strumLineNotes",c,"scale.y",getPropertyFromGroup("strumLin
 			local Y = pos.y/(1/tanHalfFOV)/-pos.z+(screenHeight/2)
 			setPropertyFromGroup('notes', v, 'x', X)
 			setPropertyFromGroup('notes', v, 'y', Y)
-
+        local susend = string.find(string.lower(getPropertyFromGroup('notes', v, 'animation.curAnim.name')), 'end') or string.find(string.lower(getPropertyFromGroup('notes', v, 'animation.curAnim.name')), 'tail')
 			local scale = -pos.z
 			scale = 1 / scale
 			local scalenewy=getPropertyFromGroup('notes',v,"isSustainNote") and 1 or scaley
 			setPropertyFromGroup('notes', v, 'scale.x', scalex * scale)
-			setPropertyFromGroup('notes', v, 'scale.y', scalenewy * scale)
-			
+			local yscale = 0
+			if getPropertyFromGroup('notes',v,"isSustainNote") and not susend then
+			yscale = (stepCrochet / 100 * 1.05)*scrollSpeeds
+		    end
+			setPropertyFromGroup('notes', v, 'scale.y', scalenewy * scale + yscale)
+		if getPropertyFromGroup('notes',v,"isSustainNote") and not susend then
+		updateHitboxFromGroup("notes", v)
+		end
+
 			setPropertyFromGroup("notes",v,"scale.x",(getPropertyFromGroup('notes',v,"scale.x")*zoom))
 
   			setPropertyFromGroup("notes",v,"scale.y",(getPropertyFromGroup('notes',v,"scale.y")*(getPropertyFromGroup('notes',v,"isSustainNote") and 1 or zoom)))
 
 			end
-			
+
 		end
-		
+
 	end
 	updateCommand(elapsed,beat)
 end
@@ -1960,7 +1833,7 @@ function onCreatePost()
     var camNotes:FlxCamera = new FlxCamera();
     camNotes.height = game.camHUD.height;
     camNotes.bgColor = 0x00000000;
-    
+
     FlxG.cameras.remove(game.camHUD, false);
     FlxG.cameras.remove(game.camOther, false);
 
@@ -1978,23 +1851,23 @@ function onCreatePost()
 ]])
 	TEMPLATE.InitMods()
 
-	--WRITE MODS HERE! 
-	
+	--WRITE MODS HERE!
+
 	initCommand()
-	
+
 	--must be called at END of start
 	TEMPLATE.setup()
-	
+
 end
 
 function onSongStart()
-    
+
     TEMPLATE.songStart()
-	
+
 	--for i=0,7,1 do
 	--	print('default position '..i..' = '..defaultPositions[i+1].x)
 	--end
-	
+
 end
 
 function onUpdatePost(elapsed)
@@ -2029,9 +1902,9 @@ function initCommand()
 		for i=0,num do
 			local smul = i==0 and 1 or 0
 			local emul = i==num and 0 or 1
-			
+
 			ease{b+i*(1/div),1/div,ea,startVal = am*smul*f, am*emul*-f,mo,pn=t.pn}
-			
+
 			f = f*-1
 		end
 	end
@@ -2062,7 +1935,7 @@ function initCommand()
 	local function mod_message(tab)
 		func{tab[1], function() debugPrint(tab[2]) end}
 	end
-	
+
 	function mod_insert(beat, len, modstring, t, pn)
 		local string_gmatch = string.gfind or string.gmatch
 		if t == 'end' then len = len - beat end
@@ -2105,7 +1978,53 @@ function initCommand()
 	local m2 = func
 	local msg = mod_message
 	local mi = mod_insert
-me{0,4,linear,180,'camangle'}
+
+    -- scroll speed table
+    local speeds = {
+    {132,1,1.2,0,1},
+    {172,184,1.5,1,1.2},
+    {232,1,1.7,0,1.5},
+    {262,3,1.8,0,1,1},
+    {296,1,1.7,0,1.8},
+    {328,0.5,1.5,0,1.7},
+    {358,1,1.8,0,1.5},
+    {422,0.5,1,0,1.8},
+    {456,2,1.2,0,1},
+    {488,0.5,1.4,0,1.2},
+    {520,0.5,1.2,0,1.4},
+    {528,2,1.5,0,1.2},
+    {533,3,1.6,0,1},
+    {576,0,1.8,0,1.6},
+    {584,0,1.6,0,1.8},
+		{592,0,1.8,0,1.6},
+		{600,0.2,1.3,0,1.8},
+		{616,0.3,1.7,0,1.3},
+		{644,0,1.2,0,1.7},
+		{646,0.1,1.5,0,1.2},
+		{648,2,1.7,0,0.2},
+    {680,0.3,1.8,0,1.7},
+		{688,0.1,1.7,0,1.8},
+		{696,0.1,1.8,0,1.7},
+		{680,0.3,1.8,0,1.7},
+		{712,4,1.1,0,1.8},
+		{824,3,1.4,0,1.1},
+		{856,0.2,1.6,0,1.4},
+		{872,0,3,0,1.6},
+		{884,888,1.8,1,0},
+		{1016,0.2,1.4,0,1.8},
+		{1032,0,1.6,0,1.4},
+		{1040,0,1.8,0,1.6},
+		{1048,0,1.6,0,1.8},
+		{1056,0,1.8,0,1.6},
+		{1076,0,1.9,0,1.8},
+    }
+    for k,v in pairs(speeds) do
+    me{v[1],v[2],outSine,v[3],'xmod',timing=(v[4]==1 and "end" or "len"),startVal=v[5]}
+    end
+
+		-- example, don't delete it because it's pretty good
+		me{648,0.4,inBounce,1,'tanexpand',0.5,'drunk',20,'drunkspeed'}
+		me{712,4,outBounce,0,'tanexpand',0,'drunk',0,'drunkspeed'}
 end
 
 function updateCommand(elapsed,beat)
