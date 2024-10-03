@@ -459,7 +459,7 @@ function quantize(f,fRoundInterval)
 return int((f + fRoundInterval / 2) / fRoundInterval) * fRoundInterval
 end
 
-function RotationXYZ( rX, rY, rZ )
+function RotationXYZ( vec, rX, rY, rZ )
     local PI=math.pi
 	rX = rX*(PI/180)
 	rY = rY*(PI/180)
@@ -472,13 +472,18 @@ function RotationXYZ( rX, rY, rZ )
 	local cZ = math.cos(rZ)
 	local sZ = math.sin(rZ)
 
-	return {
+	local mat = {
 	 	m00=cZ*cY, m01=cZ*sY*sX+sZ*cX, m02=cZ*sY*cX+sZ*(-sX), m03=0,
 	 	m10=(-sZ)*cY, m11=(-sZ)*sY*sX+cZ*cX, m12=(-sZ)*sY*cX+cZ*(-sX), m13=0,
 	 	m20=-sY, m21=cY*sX, m22=cY*cX, m23=0,
 	 	m30=0, m31=0, m32=0, m33=1
 	  }
-
+	local vec = {
+		x = vec.x * mat.m00 + vec.y * mat.m10 + vec.z * mat.m20,
+		y = vec.x * mat.m01 + vec.y * mat.m11 + vec.z * mat.m21,
+		z = vec.x * mat.m02 + vec.y * mat.m12 + vec.z * mat.m22
+	}
+	return vec
 end
 
 function round(val)
@@ -632,9 +637,6 @@ modList = {
 	camy = 0,
 	camalpha = 1,
 	camzoom = 0,
-	rotationx = 0,
-	rotationy = 0,
-	rotationz = 0,
 	camangle = 0,
 	camwag = 0,
 	xmod = 1, --scrollSpeed
@@ -689,6 +691,9 @@ modList = {
 	rotatex = 0,
 	rotatey = 0,
 	rotatez = 0,
+	rotatetype = 0,
+	rotateoriginx = 0, -- optional value
+	rotateoriginy = 0, -- optional value
 	scalex = 0,
 	scaley = 0,
 	scalez = 0,
@@ -696,7 +701,22 @@ modList = {
 	movew = 1,
 	amovew = 1,
 	waveoffset = 0,
-	cmod = -1
+	cmod = -1,
+	mmod = 10,
+	pingpong = 0,
+	pingpongtype = 0,
+	zoomx = 1,
+	zoomy = 1,
+	skew = 0,
+	skewx = 0,
+	skewy = 0,
+	rotationx = 0,
+	rotationy = 0,
+	rotationz = 0,
+	unboundedreverse = 1,
+	incominganglex = 0,
+	incomingangley = 0,
+	incominganglez = 0,
 }
 
 --column specific mods
@@ -876,8 +896,11 @@ function getReverseForCol(iCol,pn)
 	if m.split ~= 0 and iCol > 1 then val = val+m.split end
 	if m.cross ~= 0 and iCol == 1 or iCol == 2 then val = val+m.cross end
 	if m.alternate ~= 0 and iCol % 2 == 1 then val = val+m.alternate end
-	if m.centered ~= 0 then val = scale( m.centered, 0, 1, val, 0 ) end
-
+	if m.centered ~= 0 then val = val+m.centered/2 end
+	if m.unboundedreverse == 0 then
+		val = val % 2
+		if val > 1 then val=2-val end
+	end
 	return val
 end
 
@@ -1008,14 +1031,17 @@ end
 
 function cameraEffects(pn)
     local m = activeMods[pn]
-	local xpos, ypos, rotz, alpha, zoom = 0, 0, 0, 0, 0
+	local xpos, ypos, rotz, alpha, zoom, zoomx, zoomy, skewx, skewy = 0, 0, 0, 0, 0, 0, 0, 0, 0
 	xpos = xpos + activeMods[1].camx
 	ypos = ypos + activeMods[1].camy
 	rotz = rotz + activeMods[1].camangle + activeMods[1].camwag * math.sin(beat*math.pi)
 	alpha = alpha + activeMods[1].camalpha
 	zoom = zoom + activeMods[1].camzoom
-
-	return xpos, ypos, rotz, alpha, zoom
+	zoomx = zoomx + activeMods[1].zoomx
+	zoomy = zoomy + activeMods[1].zoomy
+	skewx = skewx + activeMods[1].skewx + activeMods[1].skew
+	skewy = skewy + activeMods[1].skewy + activeMods[1].skew
+	return xpos, ypos, rotz, alpha, zoom, zoomx, zoomy, skewx, skewy
 end
 
 function arrowEffects(fYOffset, iCol, pn, withreverse)
@@ -1096,7 +1122,7 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 
 	if withreverse then
 	if m['reverse'..iCol] ~= 0 or m.reverse ~= 0 or m.split ~= 0 or m.cross ~= 0 or m.alternate ~= 0 or m.centered ~= 0 then
-		ypos = ypos + getReverseForCol(iCol,pn) * 450
+		ypos = ypos + getReverseForCol(iCol,pn) * 520
 	end
 	end
 	if m.flip ~= 0 then
@@ -1110,7 +1136,7 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 	end
 
 	if m.divide ~= 0 then
-		xpos = xpos + (iCol >= 2 and 1 or -1) * ARROW_SIZE
+		xpos = xpos + (iCol >= 2 and 1 or -1) * ARROW_SIZE * m.divide
 	end
 
 	if m.beat ~= 0 then
@@ -1505,30 +1531,19 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 		end
 
 	end
-	if m.rotatex ~= 0 or m.rotatey ~= 0 or m.rotatez ~= 0 then
-		local rotation = RotationXYZ(m.rotatex, m.rotatey, m.rotatez)
-		local r = {
-		x = rotation.m00+rotation.m01+rotation.m02+rotation.m03,
-		y = rotation.m10+rotation.m11+rotation.m12+rotation.m13,
-		z = rotation.m20+rotation.m21+rotation.m22+rotation.m23
-		}
-		local mult = ARROW_SIZE*1.5
-		xpos = xpos - r.x*mult + mult
-		ypos = ypos - r.y*mult + mult
-		zpos = zpos - r.z*mult + mult
+	if m.pingpong ~= 0 then
+				ypos = ypos + (-67 * (-1 * (pn*2-3)) * math.sin(beat*math.pi + iCol*math.pi)) * m.pingpong
+				if m.pingpongtype == 0 then
+					local fDistance = ARROW_SIZE * (iCol%2 == 0 and 1 or -1);
+					xpos = xpos + fDistance * (0.6 - 0.6*math.cos(beat*math.pi)) * m.pingpong
+				elseif m.pingpongtype == 1 then
+					local fDistance = ARROW_SIZE * 2 * (1.5 - iCol);
+					xpos = xpos + fDistance * (0.6 - 0.6*math.cos(beat*math.pi)) * m.pingpong
+				elseif m.pingpongtype == 2 then
+					xpos = xpos + (iCol >= 2 and 1 or -1) * ARROW_SIZE * (0.6 - 0.6*math.cos(beat*math.pi)) * m.pingpong
+				end
 	end
-	if m['rotatex'..iCol] ~= 0 or m['rotatey'..iCol] ~= 0 or m['rotatez'..iCol] ~= 0 then
-		local rotation = RotationXYZ(m['rotatex'..iCol], m['rotatey'..iCol], m['rotatez'..iCol])
-		local r = {
-		x = rotation.m00+rotation.m01+rotation.m02+rotation.m03,
-		y = rotation.m10+rotation.m11+rotation.m12+rotation.m13,
-		z = rotation.m20+rotation.m21+rotation.m22+rotation.m23
-		}
-		local mult = ARROW_SIZE*1.5
-		xpos = xpos - r.x*mult + mult
-		ypos = ypos - r.y*mult + mult
-		zpos = zpos - r.z*mult + mult
-	end
+
     return xpos, ypos, rotz, zpos
 
 end
@@ -1683,15 +1698,22 @@ function TEMPLATE.update(elapsed)
 	-- ACTUALLY APPLY THE RESULTS OF THE ABOVE CALCULATIONS TO THE NOTES
 	---------------------------------------
 
-	local camx, camy, camrotz, camalpha, camzoom = cameraEffects(1)
+	local camx, camy, camrotz, camalpha, camzoom, camzoomx, camzoomy, camskewx, camskewy = cameraEffects(1)
 	runHaxeCode([[
 		var cs:FlxCamera = getVar("camNotes");
 		cs.angle = ]]..camrotz..[[;
-		cs.x = ]]..camx..[[;
-		cs.y = ]]..camy..[[;
 		cs.alpha = ]]..camalpha..[[;
 		cs.zoom += ]]..camzoom..[[;
 	]])
+
+	-- use matrix
+	setProperty('camNotes.canvas.__transform.c',camskewx)
+	setProperty('camNotes.canvas.__transform.b',camskewy)
+	setProperty('camNotes.canvas.__transform.d',camzoomy)
+	setProperty('camNotes.canvas.__transform.a',camzoomx)
+	setProperty('camNotes.canvas.__transform.tx',camx)
+	setProperty('camNotes.canvas.__transform.ty',camy)
+
 
 	if songStarted then
 		for pn=1,2 do
@@ -1709,16 +1731,59 @@ function TEMPLATE.update(elapsed)
                 setPropertyFromGroup("strumLineNotes",c,"angle",rz)
                 setPropertyFromGroup("strumLineNotes",c,"alpha",alp)
 
-
+	local m = activeMods[pn]
+		if m.rotatex ~= 0 or m.rotatey ~= 0 or m.rotatez ~= 0 then
+			local useX = defaultx + xp
+			local useY = defaulty + yp
+			local originPos = {x=screenWidth/2,y=screenHeight/2}
+				if m.rotatetype == 1 then
+					originPos.x = defaultx
+				elseif m.rotatetype ~= 0 then
+					originPos.x = m.rotateoriginx
+					originPos.y = m.rotateoriginy
+				end
+			local vec = {
+				x = useX - originPos.x,
+				y = useY - originPos.y,
+				z = zp
+			}
+			local rotatedpos = RotationXYZ(vec,m.rotatex,m.rotatey,m.rotatez)
+			rotatedpos.x = rotatedpos.x + originPos.x
+			rotatedpos.y = rotatedpos.y + originPos.y
+			setPropertyFromGroup('strumLineNotes', c, 'x', rotatedpos.x)
+			setPropertyFromGroup('strumLineNotes', c, 'y', rotatedpos.y)
+			zp = rotatedpos.z
+		end
+		if m.rotationx ~= 0 or m.rotationy ~= 0 or m.rotationz ~= 0 then
+			local useX = defaultx + xp
+			local useY = defaulty + yp
+			local originPos = {x=screenWidth/2-54,y=screenHeight/2}
+				originPos.x = originPos.x + (pn*2-3)*316
+			local vec = {
+				x = useX - originPos.x,
+				y = useY - originPos.y,
+				z = zp * screenHeight
+			}
+			local rotatedpos = RotationXYZ(vec,m.rotationx,m.rotationy,m.rotationz)
+			rotatedpos.x = rotatedpos.x + originPos.x
+			rotatedpos.y = rotatedpos.y + originPos.y
+			setPropertyFromGroup('strumLineNotes', c, 'x', rotatedpos.x)
+			setPropertyFromGroup('strumLineNotes', c, 'y', rotatedpos.y)
+			zp = rotatedpos.z / screenHeight
+		end
 			local scalex, scaley = getScale(0, col, pn, defaultscale[c+1].x, defaultscale[c+1].y, false)
 
 	local fov = 90
 	local tanHalfFOV = math.tan(math.rad(fov/2))
-	local m = activeMods[pn]
+
 	local fakew = m.movew*m['movew'..col]*m.amovew*m['amovew'..col]
 			local origin={x=getPropertyFromGroup("strumLineNotes",c,"x") - (screenWidth/2),y=getPropertyFromGroup("strumLineNotes",c,"y") - (screenHeight/2),z=zp}
-
-			local pos={x=origin.x,y=origin.y,z=origin.z/1000-fakew}
+			local r = {
+				x = 0,
+				y = 0,
+				z = 0
+				}
+			local pos={x=origin.x+r.x,y=origin.y+r.y,z=(origin.z+r.z)/1000-fakew}
 			local X = pos.x*(1/tanHalfFOV)/-pos.z+(screenWidth/2)
 			local Y = pos.y/(1/tanHalfFOV)/-pos.z+(screenHeight/2)
 			setPropertyFromGroup('strumLineNotes', c, 'x', X)
@@ -1764,7 +1829,11 @@ setPropertyFromGroup("strumLineNotes",c,"scale.y",getPropertyFromGroup("strumLin
 
 				local defaultx, defaulty = defaultPositions[c+1].x, defaultPositions[c+1].y
 				local cmod = activeMods[pn].cmod
-				local scrollSpeeds = xmod * activeMods[pn]['xmod'..col] * (cmod > 0 and cmod or 1) * (1 - 2*getReverseForCol(col,pn)) * scrollSpeed
+				local speed = xmod * activeMods[pn]['xmod'..col] * (cmod > 0 and cmod or 1)
+				if speed > activeMods[pn].mmod then
+					speed = activeMods[pn].mmod
+				end
+				local scrollSpeeds = speed * (1 - 2*getReverseForCol(col,pn)) * scrollSpeed
 
 				local off = (1 - 2*getReverseForCol(col,pn))
 
@@ -1787,11 +1856,62 @@ setPropertyFromGroup("strumLineNotes",c,"scale.y",getPropertyFromGroup("strumLin
 					setPropertyFromGroup("notes",v,"angle",rz)
 				end
 			local m = activeMods[pn]
+
 			local fakew = m.movew*m['movew'..col]*m.amovew*m['amovew'..col]
                 setPropertyFromGroup("notes",v,"x",defaultx + xa + (isSus and -(za/1000-fakew)*getPropertyFromGroup('notes',v,"offsetX") or 0))
-            	setPropertyFromGroup("notes",v,"y",ypos + ya + (isSus and -(za/1000-fakew)*getPropertyFromGroup('notes',v,"offsetY") or 0))
+            	setPropertyFromGroup("notes",v,"y",ypos + ya + (isSus and -(za/1000-fakew)*getPropertyFromGroup('notes',v,"offsetY")+35 or 0))
             	setPropertyFromGroup("notes",v,"alpha",alp)
 
+			if m.incominganglex ~= 0 or m.incomingangley ~= 0 or m.incominganglez ~= 0 then
+					local vec = {
+						x = 0,
+						y = ypos-defaulty,
+						z = 0
+					}
+					local rotatedpos = RotationXYZ(vec,m.incominganglex,m.incomingangley,m.incominganglez)
+					setPropertyFromGroup('notes', v, 'x', getPropertyFromGroup('notes',v,'x')+rotatedpos.x--[[ + (isSus and -(za/1000-fakew)*getPropertyFromGroup('notes',v,"offsetX") or 0)]])
+					setPropertyFromGroup('notes', v, 'y', getPropertyFromGroup('notes',v,'y')+rotatedpos.y--[[ + (isSus and -(za/1000-fakew)*getPropertyFromGroup('notes',v,"offsetY")+35 or 0)]])
+					za = za + rotatedpos.z
+			end
+			if m.rotatex ~= 0 or m.rotatey ~= 0 or m.rotatez ~= 0 then
+				local useX = defaultx + xa
+				local useY = ypos+ya
+				local originPos = {x=screenWidth/2,y=screenHeight/2}
+				if m.rotatetype == 1 then
+					originPos.x = defaultx
+				elseif m.rotatetype ~= 0 then
+					originPos.x = m.rotateoriginx
+					originPos.y = m.rotateoriginy
+				end
+				local vec = {
+					x = useX - originPos.x,
+					y = useY - originPos.y,
+					z = za
+				}
+				local rotatedpos = RotationXYZ(vec,m.rotatex,m.rotatey,m.rotatez)
+				rotatedpos.x = rotatedpos.x + originPos.x
+				rotatedpos.y = rotatedpos.y + originPos.y
+				setPropertyFromGroup('notes', v, 'x', rotatedpos.x + (isSus and -(za/1000-fakew)*getPropertyFromGroup('notes',v,"offsetX") or 0))
+				setPropertyFromGroup('notes', v, 'y', rotatedpos.y + (isSus and -(za/1000-fakew)*getPropertyFromGroup('notes',v,"offsetY")+35 or 0))
+				za = rotatedpos.z
+			end
+			if m.rotationx ~= 0 or m.rotationy ~= 0 or m.rotationz ~= 0 then
+				local useX = defaultx + xa
+				local useY = ypos+ya
+				local originPos = {x=screenWidth/2-54,y=screenHeight/2}
+					originPos.x = originPos.x + (pn*2-3)*316
+				local vec = {
+					x = useX - originPos.x,
+					y = useY - originPos.y,
+					z = za * screenHeight
+				}
+				local rotatedpos = RotationXYZ(vec,m.rotationx,m.rotationy,m.rotationz)
+				rotatedpos.x = rotatedpos.x + originPos.x
+				rotatedpos.y = rotatedpos.y + originPos.y
+				setPropertyFromGroup('notes', v, 'x', rotatedpos.x + (isSus and -(za/1000-fakew)*getPropertyFromGroup('notes',v,"offsetX") or 0))
+				setPropertyFromGroup('notes', v, 'y', rotatedpos.y + (isSus and -(za/1000-fakew)*getPropertyFromGroup('notes',v,"offsetY")+35 or 0))
+				zp = rotatedpos.z / screenHeight
+			end
 	local fov = 90
 	local tanHalfFOV = math.tan(math.rad(fov/2))
 			local origin={x=getPropertyFromGroup('notes',v,"x") - (screenWidth/2),y= getPropertyFromGroup('notes',v,"y") - (screenHeight/2),z=za}
@@ -1802,19 +1922,27 @@ setPropertyFromGroup("strumLineNotes",c,"scale.y",getPropertyFromGroup("strumLin
 			local Y = pos.y/(1/tanHalfFOV)/-pos.z+(screenHeight/2)
 			setPropertyFromGroup('notes', v, 'x', X)
 			setPropertyFromGroup('notes', v, 'y', Y)
-        local susend = string.find(string.lower(getPropertyFromGroup('notes', v, 'animation.curAnim.name')), 'end') or string.find(string.lower(getPropertyFromGroup('notes', v, 'animation.curAnim.name')), 'tail')
 			local scale = -pos.z
 			scale = 1 / scale
 			local scalenewy=getPropertyFromGroup('notes',v,"isSustainNote") and 1 or scaley
 			setPropertyFromGroup('notes', v, 'scale.x', scalex * scale)
-			local yscale = 0
-			if getPropertyFromGroup('notes',v,"isSustainNote") and not susend then
-			yscale = (stepCrochet / 100 * 1.05)*scrollSpeeds
+			local yscale = 1
+			local susend = string.find(string.lower(getPropertyFromGroup('notes', v, 'animation.curAnim.name')), 'end') or string.find(string.lower(getPropertyFromGroup('notes', v, 'animation.curAnim.name')), 'tail')
+			if getPropertyFromGroup('notes',v,"isSustainNote") then
+				if not susend then
+					yscale = stepCrochet / 100 * 1.05 * scrollSpeeds
+					if getProperty('isPixelStage') then
+						yscale = yscale * 1.19
+						yscale = yscale * (6 / height)
+					end
+				else
+					yscale = 1
+				end
 		    end
-			setPropertyFromGroup('notes', v, 'scale.y', scalenewy * scale + yscale)
-		if getPropertyFromGroup('notes',v,"isSustainNote") and not susend then
+			setPropertyFromGroup('notes', v, 'scale.y', scalenewy * scale * yscale)
+		--if getPropertyFromGroup('notes',v,"isSustainNote") then
 		updateHitboxFromGroup("notes", v)
-		end
+		--end
 
 			setPropertyFromGroup("notes",v,"scale.x",(getPropertyFromGroup('notes',v,"scale.x")*zoom))
 
@@ -1927,6 +2055,10 @@ function initCommand()
 		set {beat, str1, mod, plr = pn}
 		ease {beat, len, eas, str2, mod, plr = pn}
 	end
+	local function mod_outin(beat, len, per1, per2, mod, oute, ine)
+		ease{beat, len/2, oute or outCirc, per2, mod}
+		ease{beat+len/2, len/2, ine or inCirc, per1, mod}
+	end
 	local function mod_kick(beat,length,start,apex,mod,inEase,outEase,pn)
 		local off = length/2
 		mod_ease(beat - off, (length/2), start, apex, tostring(mod), 'len', inEase,pn)
@@ -1973,58 +2105,15 @@ function initCommand()
 		end
 	end
 
+	local add = ease
+	local acc = set
 	local me = ease
+	local e = mod_ease
 	local mpf = func
 	local m2 = func
 	local msg = mod_message
 	local mi = mod_insert
 
-    -- scroll speed table
-    local speeds = {
-    {132,1,1.2,0,1},
-    {172,184,1.5,1,1.2},
-    {232,1,1.7,0,1.5},
-    {262,3,1.8,0,1,1},
-    {296,1,1.7,0,1.8},
-    {328,0.5,1.5,0,1.7},
-    {358,1,1.8,0,1.5},
-    {422,0.5,1,0,1.8},
-    {456,2,1.2,0,1},
-    {488,0.5,1.4,0,1.2},
-    {520,0.5,1.2,0,1.4},
-    {528,2,1.5,0,1.2},
-    {533,3,1.6,0,1},
-    {576,0,1.8,0,1.6},
-    {584,0,1.6,0,1.8},
-		{592,0,1.8,0,1.6},
-		{600,0.2,1.3,0,1.8},
-		{616,0.3,1.7,0,1.3},
-		{644,0,1.2,0,1.7},
-		{646,0.1,1.5,0,1.2},
-		{648,2,1.7,0,0.2},
-    {680,0.3,1.8,0,1.7},
-		{688,0.1,1.7,0,1.8},
-		{696,0.1,1.8,0,1.7},
-		{680,0.3,1.8,0,1.7},
-		{712,4,1.1,0,1.8},
-		{824,3,1.4,0,1.1},
-		{856,0.2,1.6,0,1.4},
-		{872,0,3,0,1.6},
-		{884,888,1.8,1,0},
-		{1016,0.2,1.4,0,1.8},
-		{1032,0,1.6,0,1.4},
-		{1040,0,1.8,0,1.6},
-		{1048,0,1.6,0,1.8},
-		{1056,0,1.8,0,1.6},
-		{1076,0,1.9,0,1.8},
-    }
-    for k,v in pairs(speeds) do
-    me{v[1],v[2],outSine,v[3],'xmod',timing=(v[4]==1 and "end" or "len"),startVal=v[5]}
-    end
-
-		-- example, don't delete it because it's pretty good
-		me{648,0.4,inBounce,1,'tanexpand',0.5,'drunk',20,'drunkspeed'}
-		me{712,4,outBounce,0,'tanexpand',0,'drunk',0,'drunkspeed'}
 end
 
 function updateCommand(elapsed,beat)
