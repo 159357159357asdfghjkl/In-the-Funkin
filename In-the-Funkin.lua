@@ -1933,7 +1933,7 @@ setPropertyFromGroup("strumLineNotes",c,"scale.y",getPropertyFromGroup("strumLin
 					yscale = stepCrochet / 100 * 1.05 * scrollSpeeds
 					if getProperty('isPixelStage') then
 						yscale = yscale * 1.19
-						yscale = yscale * (6 / height)
+						yscale = yscale * (6 / getPropertyFromGroup('notes', v, 'height'))
 					end
 				else
 					yscale = 1
