@@ -4,10 +4,12 @@ TEMPLATE = {}
 
 --[[
 			READ MEEEEEEEE!
-	This version of modchart template is modified from TaroNuke's TEMPLATE 1, the file has many differences.
-	By comparing this version with my original modified version, i removed stuff from other modchart tools,
-	and add tons of new stuff. e.g. it can use many mods from one ease
-			now i will keep updating this shit instead of updating the old one
+	The template is modified from TaroNuke's TEMPLATE 1,
+	now i will keep updating this shit instead of updating the old one
+
+	Credits:
+		Original Template : TaroNuke
+		Modified : 159357159357asdfghjkl aka a7068b15432 aka UntilYouAreGone
 ]]
 
 
@@ -697,6 +699,7 @@ modList = {
 	scalex = 0,
 	scaley = 0,
 	scalez = 0,
+	scale = 0,
 	orient = 0,
 	movew = 1,
 	amovew = 1,
@@ -717,6 +720,10 @@ modList = {
 	incominganglex = 0,
 	incomingangley = 0,
 	incominganglez = 0,
+	drawsize = 10,
+	stealthtype = 1,
+	stealthpastreceptors = 1,
+	smooth = 0,
 }
 
 --column specific mods
@@ -745,6 +752,7 @@ for i=0,3 do
 	modList['scalex'..i] = 0
 	modList['scaley'..i] = 0
 	modList['scalez'..i] = 0
+	modList['scale'..i] = 0
 	modList['squish'..i] = 0
 	modList['stretch'..i] = 0
 	modList['bumpy'..i] = 0
@@ -853,16 +861,25 @@ function receptorAlpha(iCol,pn)
 	return alp
 end
 
-function arrowAlpha(fYPos, iCol,pn)
+function arrowAlpha(fYOffset, iCol,pn,ypos)
 	local alp = 1
-
 	local m = activeMods[pn]
+	local fYPos = 0
+	if m.stealthtype == 1 then
+		fYPos = fYOffset
+	else
+		fYPos = ypos
+	end
+
+	if fYPos < 0 and m.stealthpastreceptors == false then
+		return 1
+	end
 
 	if m.alpha ~= 1 then
 		alp = alp*m.alpha
 	end
 	if m.stealth ~= 0 or m['stealth'..iCol] ~= 0 then
-		alp = alp*(1-m.stealth)*(1-m['stealth'..iCol])
+		alp = alp - m.stealth - m['stealth'..iCol]
 	end
 	if m.hidden ~= 0 then
 		local fHiddenVisibleAdjust = scale( fYPos, GetHiddenStartLine(m), GetHiddenEndLine(m), 0, -1 );
@@ -1005,9 +1022,9 @@ function getScale(fYOffset, iCol, pn, sx, sy, isNote)
     local y = sy
 	local z = 0
     local m = activeMods[pn]
-	x = x + m.scalex + m['scalex'..iCol]
-    y = y + m.scaley + m['scaley'..iCol]
-	z = z + m.scalez + m['scalez'..iCol]
+	x = x + m.scalex + m['scalex'..iCol] + m.scale + m['scale'..iCol]
+    y = y + m.scaley + m['scaley'..iCol] + m.scale + m['scale'..iCol]
+	z = z + m.scalez + m['scalez'..iCol] + m.scale + m['scale'..iCol]
 
     local angle = 0;
     local stretch = m.stretch + m['stretch'..iCol]
@@ -1044,7 +1061,7 @@ function cameraEffects(pn)
 	return xpos, ypos, rotz, alpha, zoom, zoomx, zoomy, skewx, skewy
 end
 
-function arrowEffects(fYOffset, iCol, pn, withreverse)
+function arrowEffects(fYOffset, iCol, pn, withreverse, time)
     local m = activeMods[pn]
 
     local xpos, ypos, rotz, zpos = 0, 0, 0, 0
@@ -1543,7 +1560,10 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 					xpos = xpos + (iCol >= 2 and 1 or -1) * ARROW_SIZE * (0.6 - 0.6*math.cos(beat*math.pi)) * m.pingpong
 				end
 	end
-
+	if m.smooth ~= 0 then
+		ypos = ypos + math.sin(getSongPosition() * 0.002 + iCol*0.8) * 50 * m.smooth
+		xpos = xpos + math.cos(getSongPosition() * 0.003 + iCol*0.8) * 50 * m.smooth
+	end
     return xpos, ypos, rotz, zpos
 
 end
@@ -1607,7 +1627,7 @@ end
 
 function TEMPLATE.update(elapsed)
     beat = (getSongPosition() / 1000) * (curBpm/60)
-	luaDebugMode = true
+	setProperty('spawnTime',activeMods[1].drawsize * 125)
 
 	--------------------------------------------------------------
 	-- modified version of exschwasion's template 1 ease reader
@@ -1622,6 +1642,7 @@ function TEMPLATE.update(elapsed)
 		local v = mods[curmod]
 		for i = 4, #v, 2 do
 		local mn = v[i + 1]
+		mn:lower()
 		local dur = v[2]
 		if v.timing and v.timing == 'end' then
 			dur = v[2]-v[1]
@@ -1703,16 +1724,16 @@ function TEMPLATE.update(elapsed)
 		var cs:FlxCamera = getVar("camNotes");
 		cs.angle = ]]..camrotz..[[;
 		cs.alpha = ]]..camalpha..[[;
-		cs.zoom += ]]..camzoom..[[;
+		cs.zoom = game.camHUD.zoom + ]]..camzoom..[[;
+		cs.scaleX = ]]..camzoomx..[[;
+		cs.scaleY = ]]..camzoomy..[[;
+		cs.x = ]]..camx..[[;
+		cs.y = ]]..camy..[[;
 	]])
 
 	-- use matrix
 	setProperty('camNotes.canvas.__transform.c',camskewx)
 	setProperty('camNotes.canvas.__transform.b',camskewy)
-	setProperty('camNotes.canvas.__transform.d',camzoomy)
-	setProperty('camNotes.canvas.__transform.a',camzoomx)
-	setProperty('camNotes.canvas.__transform.tx',camx)
-	setProperty('camNotes.canvas.__transform.ty',camy)
 
 
 	if songStarted then
@@ -1720,7 +1741,7 @@ function TEMPLATE.update(elapsed)
 			local xmod = activeMods[pn].xmod
 			for col=0,3 do
 				local c = (pn-1)*4 + col
-				local xp, yp, rz, zp = arrowEffects(0, col, pn, true)
+				local xp, yp, rz, zp = arrowEffects(0, col, pn, true, 0)
 				local alp = receptorAlpha(col,pn)
 
 				--print('Areceptor '..c..' is '..tostring(receptor))
@@ -1729,7 +1750,15 @@ function TEMPLATE.update(elapsed)
 			setPropertyFromGroup('strumLineNotes', c, 'x', defaultx + xp)
 			setPropertyFromGroup('strumLineNotes', c, 'y', defaulty + yp)
                 setPropertyFromGroup("strumLineNotes",c,"angle",rz)
-                setPropertyFromGroup("strumLineNotes",c,"alpha",alp)
+				local alpha = getPropertyFromGroup('strumLineNotes',c,'alpha')*math.clamp(scale(alp, 0.5, 0, 1, 0),0,1)
+				local glow = math.clamp(scale(alp, 1, 0.5, 0, 1.3),0,1)
+				setPropertyFromGroup('strumLineNotes',c,'colorTransform.redMultiplier',1 - glow)
+				setPropertyFromGroup('strumLineNotes',c,'colorTransform.greenMultiplier',1 - glow)
+				setPropertyFromGroup('strumLineNotes',c,'colorTransform.blueMultiplier',1 - glow)
+				setPropertyFromGroup('strumLineNotes',c,'colorTransform.alphaMultiplier',alpha)
+				setPropertyFromGroup('strumLineNotes',c,'colorTransform.redOffset',glow*255)
+				setPropertyFromGroup('strumLineNotes',c,'colorTransform.greenOffset',glow*255)
+				setPropertyFromGroup('strumLineNotes',c,'colorTransform.blueOffset',glow*255)
 
 	local m = activeMods[pn]
 		if m.rotatex ~= 0 or m.rotatey ~= 0 or m.rotatez ~= 0 then
@@ -1834,18 +1863,20 @@ setPropertyFromGroup("strumLineNotes",c,"scale.y",getPropertyFromGroup("strumLin
 					speed = activeMods[pn].mmod
 				end
 				local scrollSpeeds = speed * (1 - 2*getReverseForCol(col,pn)) * scrollSpeed
-
+				local sustainoffset = 35 * scrollSpeeds
 				local off = (1 - 2*getReverseForCol(col,pn))
 
 				local ypos = getYAdjust(defaulty - (getSongPosition() - targTime),col,pn) * scrollSpeeds * 0.45 - off + ARROW_SIZE / 4
 					local zoom = getZoom(ypos-defaulty,col,pn)
-				local xa, ya, rz, za = arrowEffects(ypos-defaulty, col, pn, true)
-				local alp = arrowAlpha(ypos-defaulty, col, pn)
+				local xa, ya, rz, za = arrowEffects(ypos-defaulty, col, pn, true, targTime)
+
+				local xawr,yawr,rzwr,zawr = arrowEffects(ypos-defaulty,col,pn,false,targTime)
+				local alp = arrowAlpha(ypos-defaulty, col, pn, yawr)
 			    local scalex, scaley = getScale(ypos-defaulty, col, pn, defaultscale[c+1].x, defaultscale[c+1].y, true)
 				if getPropertyFromGroup('notes',v,"isSustainNote") --[[and not note.isParent]] then
 					local ypos2 = getYAdjust(defaulty - ((getSongPosition()+.1) - targTime),col,pn) * scrollSpeeds * 0.45 - off + ARROW_SIZE / 2
 
-					local xa2, ya2 = arrowEffects(ypos2-defaulty, col, pn)
+					local xa2, ya2 = arrowEffects(ypos2-defaulty, col, pn, true, targTime)
 
 					--if scrollSpeed >= 0 then
 				setPropertyFromGroup("notes",v,"angle",180+math.deg(math.atan2(((ypos2 + ya2)-(ypos + ya))*100,(xa2-xa)*100) + math.pi/2))
@@ -1859,9 +1890,18 @@ setPropertyFromGroup("strumLineNotes",c,"scale.y",getPropertyFromGroup("strumLin
 
 			local fakew = m.movew*m['movew'..col]*m.amovew*m['amovew'..col]
                 setPropertyFromGroup("notes",v,"x",defaultx + xa + (isSus and -(za/1000-fakew)*getPropertyFromGroup('notes',v,"offsetX") or 0))
-            	setPropertyFromGroup("notes",v,"y",ypos + ya + (isSus and -(za/1000-fakew)*getPropertyFromGroup('notes',v,"offsetY")+35 or 0))
-            	setPropertyFromGroup("notes",v,"alpha",alp)
+            	setPropertyFromGroup("notes",v,"y",ypos + ya + (isSus and -(za/1000-fakew)*getPropertyFromGroup('notes',v,"offsetY")+sustainoffset or 0))
 
+				-- from troll engine
+				local alpha = getPropertyFromGroup('notes',v,'alpha')*math.clamp(scale(alp, 0.5, 0, 1, 0),0,1)
+				local glow = math.clamp(scale(alp, 1, 0.5, 0, 1.3),0,1)
+				setPropertyFromGroup('notes',v,'colorTransform.redMultiplier',1 - glow)
+				setPropertyFromGroup('notes',v,'colorTransform.greenMultiplier',1 - glow)
+				setPropertyFromGroup('notes',v,'colorTransform.blueMultiplier',1 - glow)
+				setPropertyFromGroup('notes',v,'colorTransform.alphaMultiplier',alpha)
+				setPropertyFromGroup('notes',v,'colorTransform.redOffset',glow*255)
+				setPropertyFromGroup('notes',v,'colorTransform.greenOffset',glow*255)
+				setPropertyFromGroup('notes',v,'colorTransform.blueOffset',glow*255)
 			if m.incominganglex ~= 0 or m.incomingangley ~= 0 or m.incominganglez ~= 0 then
 					local vec = {
 						x = 0,
@@ -1869,8 +1909,8 @@ setPropertyFromGroup("strumLineNotes",c,"scale.y",getPropertyFromGroup("strumLin
 						z = 0
 					}
 					local rotatedpos = RotationXYZ(vec,m.incominganglex,m.incomingangley,m.incominganglez)
-					setPropertyFromGroup('notes', v, 'x', getPropertyFromGroup('notes',v,'x')+rotatedpos.x--[[ + (isSus and -(za/1000-fakew)*getPropertyFromGroup('notes',v,"offsetX") or 0)]])
-					setPropertyFromGroup('notes', v, 'y', getPropertyFromGroup('notes',v,'y')+rotatedpos.y--[[ + (isSus and -(za/1000-fakew)*getPropertyFromGroup('notes',v,"offsetY")+35 or 0)]])
+					setPropertyFromGroup('notes', v, 'x', getPropertyFromGroup('notes',v,'x')+rotatedpos.x)
+					setPropertyFromGroup('notes', v, 'y', getPropertyFromGroup('notes',v,'y')+rotatedpos.y)
 					za = za + rotatedpos.z
 			end
 			if m.rotatex ~= 0 or m.rotatey ~= 0 or m.rotatez ~= 0 then
@@ -1892,7 +1932,7 @@ setPropertyFromGroup("strumLineNotes",c,"scale.y",getPropertyFromGroup("strumLin
 				rotatedpos.x = rotatedpos.x + originPos.x
 				rotatedpos.y = rotatedpos.y + originPos.y
 				setPropertyFromGroup('notes', v, 'x', rotatedpos.x + (isSus and -(za/1000-fakew)*getPropertyFromGroup('notes',v,"offsetX") or 0))
-				setPropertyFromGroup('notes', v, 'y', rotatedpos.y + (isSus and -(za/1000-fakew)*getPropertyFromGroup('notes',v,"offsetY")+35 or 0))
+				setPropertyFromGroup('notes', v, 'y', rotatedpos.y + (isSus and -(za/1000-fakew)*getPropertyFromGroup('notes',v,"offsetY")+sustainoffset or 0))
 				za = rotatedpos.z
 			end
 			if m.rotationx ~= 0 or m.rotationy ~= 0 or m.rotationz ~= 0 then
@@ -1909,9 +1949,10 @@ setPropertyFromGroup("strumLineNotes",c,"scale.y",getPropertyFromGroup("strumLin
 				rotatedpos.x = rotatedpos.x + originPos.x
 				rotatedpos.y = rotatedpos.y + originPos.y
 				setPropertyFromGroup('notes', v, 'x', rotatedpos.x + (isSus and -(za/1000-fakew)*getPropertyFromGroup('notes',v,"offsetX") or 0))
-				setPropertyFromGroup('notes', v, 'y', rotatedpos.y + (isSus and -(za/1000-fakew)*getPropertyFromGroup('notes',v,"offsetY")+35 or 0))
+				setPropertyFromGroup('notes', v, 'y', rotatedpos.y + (isSus and -(za/1000-fakew)*getPropertyFromGroup('notes',v,"offsetY")+sustainoffset or 0))
 				zp = rotatedpos.z / screenHeight
 			end
+
 	local fov = 90
 	local tanHalfFOV = math.tan(math.rad(fov/2))
 			local origin={x=getPropertyFromGroup('notes',v,"x") - (screenWidth/2),y= getPropertyFromGroup('notes',v,"y") - (screenHeight/2),z=za}
@@ -1931,25 +1972,17 @@ setPropertyFromGroup("strumLineNotes",c,"scale.y",getPropertyFromGroup("strumLin
 			if getPropertyFromGroup('notes',v,"isSustainNote") then
 				if not susend then
 					yscale = stepCrochet / 100 * 1.05 * scrollSpeeds
-					if getProperty('isPixelStage') then
-						yscale = yscale * 1.19
-						yscale = yscale * (6 / getPropertyFromGroup('notes', v, 'height'))
-					end
 				else
 					yscale = 1
 				end
 		    end
 			setPropertyFromGroup('notes', v, 'scale.y', scalenewy * scale * yscale)
-		--if getPropertyFromGroup('notes',v,"isSustainNote") then
-		updateHitboxFromGroup("notes", v)
-		--end
 
 			setPropertyFromGroup("notes",v,"scale.x",(getPropertyFromGroup('notes',v,"scale.x")*zoom))
 
-  			setPropertyFromGroup("notes",v,"scale.y",(getPropertyFromGroup('notes',v,"scale.y")*(getPropertyFromGroup('notes',v,"isSustainNote") and 1 or zoom)))
-
+  			setPropertyFromGroup("notes",v,"scale.y",(getPropertyFromGroup('notes',v,"scale.y")*zoom))
 			end
-
+			updateHitboxFromGroup('notes',v)
 		end
 
 	end
@@ -1978,7 +2011,6 @@ function onCreatePost()
 	setVar("camNotes",camNotes);
 ]])
 	TEMPLATE.InitMods()
-
 	--WRITE MODS HERE!
 
 	initCommand()
@@ -2004,6 +2036,10 @@ end
 
 --callbacks
 function initCommand()
+	local enable_modchart = true
+	if enable_modchart then
+	-- plugins
+	-- there are many functions that can be used in fnf
     local function hide(t)
 		local bt,tpn = t[1],t.pn
 		for i=0,3 do
@@ -2067,8 +2103,10 @@ function initCommand()
 	local function mod_message(tab)
 		func{tab[1], function() debugPrint(tab[2]) end}
 	end
-
-	function mod_insert(beat, len, modstring, t, pn)
+	local function mod_perframe(start_beat, end_beat, f)
+		func {start_beat, end_beat, f, mode = 'end'}
+	end
+	local function mod_insert(beat, len, modstring, t, pn)
 		local string_gmatch = string.gfind or string.gmatch
 		if t == 'end' then len = len - beat end
 		for str in string_gmatch(modstring, '[^,]+') do
@@ -2104,6 +2142,72 @@ function initCommand()
 			end
 		end
 	end
+	local function mixEase(e1, e2, point)
+		if not point then point = 0.5 end
+
+		return function(a)
+			if a < point then
+				return e1(a / point) * point
+			else
+				return e2((a - point) / (1 - point)) * (1 - point) + point
+			end
+		end
+	end
+	local function ease_smooth(beat,len,amount,mod,inEase,outEase,point,pn)
+		ease {beat-(len*point),len, mixEase(inEase,outEase,point), amount, mod, plr = pn}
+	end
+	local function sugarkiller(beat, length, step, minstealth, maxstealth, plr)
+		if not minstealth then minstealth = 0.50 end;
+		if not maxstealth then maxstealth = 0.85 end;
+		if not step then step = 1 end;
+		if not length then length = 1 end;
+		for i = 0, math.max(length-1,0) do
+			ease{beat+(i*0.5), .25/step, instant, 1.00, 'invert', 0, 'flip', maxstealth, 'stealth', plr = plr}
+			ease{beat+(i*0.5)+.25/step, .25/step, instant, 1.00, 'flip', 0, 'invert', maxstealth, 'stealth', plr = plr}
+			ease{beat+(i*0.5)+.50/step, .25/step, instant, 1.00, 'flip', -1.00, 'invert', maxstealth, 'stealth', plr = plr}
+			if i == math.max(length-1,0) then
+				ease{beat+(i*0.5)+.75/step, .25/step, instant, 0, 'flip', 0, 'invert', 0, 'stealth', plr = plr}
+			else
+				ease{beat+(i*0.5)+.75/step, .25/step, instant, 0, 'flip', 0, 'invert', minstealth, 'stealth', plr = plr}
+			end
+		end
+	end
+	local function ease2 (beat,length,eas,amount,mod,pn)	
+		ease{beat-(length/2),length,eas,amount,mod,plr = pn}
+	end
+	local function mod_beat(beat,strength,pn)
+		if not strength then strength = 1000 end;
+			set {beat-.5, strength, 'beat', plr = pn}
+			set {beat+.5, 0, 'beat', plr = pn}
+	end
+	local function range(var,tablex)
+		for _,v in pairs(tablex) do
+			if var >= v[1] and var <= v[2] then
+				return true
+			end
+		end
+		return false
+	end
+	local function modulo(a, b)
+		return a - math.floor(a / b) * b
+	end
+	local stringbuilder_mt =  {
+		__index = {
+			build = table.concat,
+			clear = iclear,
+		},
+		__call = function(self, a)
+			table.insert(self, tostring(a))
+			return self
+		end,
+		__tostring = table.concat,
+		}
+	local function stringbuilder()
+			return setmetatable({}, stringbuilder_mt)
+	end
+	--end mod plugins
+
+
 
 	local add = ease
 	local acc = set
@@ -2114,6 +2218,9 @@ function initCommand()
 	local msg = mod_message
 	local mi = mod_insert
 
+	set{0,0.6,'vibrate'} -- beat, value, mod name
+				
+	end
 end
 
 function updateCommand(elapsed,beat)
