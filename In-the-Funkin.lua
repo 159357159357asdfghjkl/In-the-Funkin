@@ -7,7 +7,7 @@ TEMPLATE = {}
 	The template is modified from TaroNuke's TEMPLATE 1,
 	now i will keep updating this shit instead of updating the old one,
 	only for psych engine (support version >= 0.6.3)
-
+	it's like psych modcharting tool lua style
 	Credits:
 		Original Template : TaroNuke
 		Modified : UntilYouAreGone
@@ -491,9 +491,13 @@ end
 function round(val)
 	return math.floor(val+.5)
 end
-function selectTanType(angle,is_csc)
+function selectTanType(angle,is_csc,is_sec,is_cot)
 if is_csc ~= 0 then
 return 1 / math.sin(angle)
+elseif is_sec ~= 0 then
+return 1 / math.cos(angle)
+elseif is_cot ~= 0 then
+return math.cos(angle) / math.sin(angle)
 else
 return math.sin(angle) / math.cos(angle)
 end
@@ -566,9 +570,20 @@ modList = {
 	tandigitalsteps = 0,
 	tandigitaloffset = 0,
 	tandigitalperiod = 0,
+	digitaly = 0,
+	digitalysteps = 0,
+	digitalyoffset = 0,
+	digitalyperiod = 0,
+	tandigitaly = 0,
+	tandigitalysteps = 0,
+	tandigitalyoffset = 0,
+	tandigitalyperiod = 0,
 	square = 0,
 	squareoffset = 0,
 	squareperiod = 0,
+	squarey = 0,
+	squareyoffset = 0,
+	squareyperiod = 0,
 	bounce = 0,
 	bounceoffset = 0,
 	bounceperiod = 0,
@@ -649,7 +664,9 @@ modList = {
 	camangle = 0,
 	camwag = 0,
 	xmod = 1, --scrollSpeed
-	cosecant = 0, -- bool
+	cotangent = 0,
+	secant = 0,
+	cosecant = 0,
 	vibrate = 0,
 	vibratez = 0,
 	bumpy = 0,
@@ -731,13 +748,14 @@ modList = {
 	incominganglex = 0,
 	incomingangley = 0,
 	incominganglez = 0,
-	drawsize = 10,
+	drawsize = 1,
 	stealthtype = 1, -- bool
 	stealthpastreceptors = 1, -- bool
 	glow = 1, -- bool
 	wiggle = 0,
 	smooth = 0,
-	centered = 0
+	centered = 0,
+	infinite = 0,
 }
 
 --column specific mods
@@ -989,7 +1007,7 @@ function getYAdjust(fYOffset, iCol, pn)
     tanExpandSeconds = tanExpandSeconds + (time - last);
     tanExpandSeconds = tanExpandSeconds % ((math.pi * 2) / (m.tanexpandperiod + 1));
     last = time
-	    local fTanExpandMultiplier = scale(selectTanType(tanExpandSeconds * 3 * (m.tanexpandperiod + 1),m.cosecant), -1, 1, 0.75, 1.75);
+	    local fTanExpandMultiplier = scale(selectTanType(tanExpandSeconds * 3 * (m.tanexpandperiod + 1),m.cosecant,m.secant,m.cotangent), -1, 1, 0.75, 1.75);
       fScrollSpeed = fScrollSpeed * scale(m.tanexpand, 0, 1, 1, fTanExpandMultiplier);
 	end
 	fYOffset = fYOffset * fScrollSpeed
@@ -1039,7 +1057,6 @@ function getScale(fYOffset, iCol, pn, sx, sy, isNote)
     y = y + m.scaley + m['scaley'..iCol] + m.scale + m['scale'..iCol]
 	z = z + m.scalez + m['scalez'..iCol] + m.scale + m['scale'..iCol]
 
-    local angle = 0;
     local stretch = m.stretch + m['stretch'..iCol]
     local squish = m.squish + m['squish'..iCol]
     local stretchX = lerp(1, 0.5, stretch);
@@ -1051,11 +1068,11 @@ function getScale(fYOffset, iCol, pn, sx, sy, isNote)
 	y = y * math.pow( 0.5, m.tinyy ) * math.pow( 0.5, m['tinyy'..iCol] )
 	z = z * math.pow( 0.5, m.tinyz ) * math.pow( 0.5, m['tinyz'..iCol] )
 
-	x = x * ((math.sin(angle * math.pi / 180) * squishY) + (math.cos(angle * math.pi / 180) * squishX));
-	x = x * ((math.sin(angle * math.pi / 180) * stretchY) + (math.cos(angle * math.pi / 180) * stretchX));
+	x = x * squishX
+	x = x * stretchX
 
-	y = y * ((math.cos(angle * math.pi / 180) * stretchY) + (math.sin(angle * math.pi / 180) * stretchX));
-	y = y * ((math.cos(angle * math.pi / 180) * squishY) + (math.sin(angle * math.pi / 180) * squishX));
+	y = y * stretchY
+	y = y * squishY
 		return x,y
 end
 
@@ -1095,31 +1112,31 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
         ypos = ypos + m.drunky * math.cos(getSongPosition()*0.001 * (1 + m.drunkyspeed) + iCol * ((m.drunkyoffset * 0.2) + 0.2) + fYOffset * ((m.drunkyperiod * 10) + 10) / screenHeight) * ARROW_SIZE * 0.5;
     end
     if m.tandrunk ~= 0 then
-    xpos = xpos + m.tandrunk * selectTanType(getSongPosition()*0.001 * (1 + m.tandrunkspeed) + iCol * ((m.tandrunkoffset * 0.2) + 0.2) + fYOffset * ((m.tandrunkperiod * 10) + 10) / screenHeight,m.cosecant) * ARROW_SIZE * 0.5;
+    xpos = xpos + m.tandrunk * selectTanType(getSongPosition()*0.001 * (1 + m.tandrunkspeed) + iCol * ((m.tandrunkoffset * 0.2) + 0.2) + fYOffset * ((m.tandrunkperiod * 10) + 10) / screenHeight,m.cosecant,m.secant,m.cotangent) * ARROW_SIZE * 0.5;
     end
     if m.tandrunkz ~= 0 then
-    zpos = zpos + m.tandrunkz * selectTanType(getSongPosition()*0.001 * (1 + m.tandrunkzspeed) + iCol * ((m.tandrunkzoffset * 0.2) + 0.2) + fYOffset * ((m.tandrunkzperiod * 10) + 10) / screenHeight,m.cosecant) * ARROW_SIZE * 0.5;
+    zpos = zpos + m.tandrunkz * selectTanType(getSongPosition()*0.001 * (1 + m.tandrunkzspeed) + iCol * ((m.tandrunkzoffset * 0.2) + 0.2) + fYOffset * ((m.tandrunkzperiod * 10) + 10) / screenHeight,m.cosecant,m.secant,m.cotangent) * ARROW_SIZE * 0.5;
     end
     if m.tandrunky ~= 0 then
-    ypos = ypos + m.tandrunky * selectTanType(getSongPosition()*0.001 * (1 + m.tandrunkyspeed) + iCol * ((m.tandrunkyoffset * 0.2) + 0.2) + fYOffset * ((m.tandrunkyperiod * 10) + 10) / screenHeight,m.cosecant) * ARROW_SIZE * 0.5;
+    ypos = ypos + m.tandrunky * selectTanType(getSongPosition()*0.001 * (1 + m.tandrunkyspeed) + iCol * ((m.tandrunkyoffset * 0.2) + 0.2) + fYOffset * ((m.tandrunkyperiod * 10) + 10) / screenHeight,m.cosecant,m.secant,m.cotangent) * ARROW_SIZE * 0.5;
     end
     if m.tipsy ~= 0 then
         ypos = ypos + m.tipsy * math.cos( getSongPosition() * 0.001 * ((m.tipsyspeed * 1.2) + 1.2) + (iCol * ((m.tipsyoffset * 1.8) + 1.8)))* ARROW_SIZE * 0.4
     end
     if m.tantipsy ~= 0 then
-        ypos = ypos + m.tantipsy * selectTanType( getSongPosition() * 0.001 * ((m.tantipsyspeed * 1.2) + 1.2) + (iCol * ((m.tantipsyoffset * 1.8) + 1.8)),m.cosecant)* ARROW_SIZE * 0.4
+        ypos = ypos + m.tantipsy * selectTanType( getSongPosition() * 0.001 * ((m.tantipsyspeed * 1.2) + 1.2) + (iCol * ((m.tantipsyoffset * 1.8) + 1.8)),m.cosecant,m.secant,m.cotangent)* ARROW_SIZE * 0.4
     end
     if m.tipsyz ~= 0 then
         zpos = zpos + m.tipsyz * math.cos( getSongPosition() * 0.001 * ((m.tipsyzspeed * 1.2) + 1.2) + (iCol * ((m.tipsyzoffset * 1.8) + 1.8)))* ARROW_SIZE * 0.4
     end
     if m.tantipsyz ~= 0 then
-        zpos = zpos + m.tantipsyz * selectTanType( getSongPosition() * 0.001 * ((m.tantipsyzspeed * 1.2) + 1.2) + (iCol * ((m.tantipsyzoffset * 1.8) + 1.8)),m.cosecant)* ARROW_SIZE * 0.4
+        zpos = zpos + m.tantipsyz * selectTanType( getSongPosition() * 0.001 * ((m.tantipsyzspeed * 1.2) + 1.2) + (iCol * ((m.tantipsyzoffset * 1.8) + 1.8)),m.cosecant,m.secant,m.cotangent)* ARROW_SIZE * 0.4
     end
     if m.tipsyx ~= 0 then
         xpos = xpos + m.tipsyx * math.cos( getSongPosition() * 0.001 * ((m.tipsyxspeed * 1.2) + 1.2) + (iCol * ((m.tipsyxoffset * 1.8) + 1.8))) * ARROW_SIZE * 0.4
     end
      if m.tantipsyx ~= 0 then
-        xpos = xpos + m.tantipsyx * selectTanType( getSongPosition() * 0.001 * ((m.tantipsyxspeed * 1.2) + 1.2) + (iCol * ((m.tantipsyxoffset * 1.8) + 1.8)),m.cosecant)* ARROW_SIZE * 0.4
+        xpos = xpos + m.tantipsyx * selectTanType( getSongPosition() * 0.001 * ((m.tantipsyxspeed * 1.2) + 1.2) + (iCol * ((m.tantipsyxoffset * 1.8) + 1.8)),m.cosecant,m.secant,m.cotangent)* ARROW_SIZE * 0.4
     end
     if m.adrunk ~= 0 then
         xpos = xpos + m.adrunk * ( math.cos( getSongPosition()*0.001 + iCol*(0.2) + 1*(0.2) + fYOffset*(10)/720) * ARROW_SIZE*0.5 )
@@ -1268,7 +1285,13 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 		xpos = xpos + (m.digital * ARROW_SIZE * 0.5) * round((m.digitalsteps+1) * math.sin(math.pi * (fYOffset + (1.0 * m.digitaloffset ) ) / (ARROW_SIZE + (m.digitalperiod * ARROW_SIZE) )) )/(m.digitalsteps+1);
 	end
 	if m.tandigital ~= 0 then
-		xpos = xpos + (m.tandigital * ARROW_SIZE * 0.5) * round((m.tandigitalsteps+1) * selectTanType(math.pi * (fYOffset + (1.0 * m.tandigitaloffset ) ) / (ARROW_SIZE + (m.tandigitalperiod * ARROW_SIZE) ),m.cosecant) )/(m.tandigitalsteps+1);
+		xpos = xpos + (m.tandigital * ARROW_SIZE * 0.5) * round((m.tandigitalsteps+1) * selectTanType(math.pi * (fYOffset + (1.0 * m.tandigitaloffset ) ) / (ARROW_SIZE + (m.tandigitalperiod * ARROW_SIZE) ),m.cosecant,m.secant,m.cotangent) )/(m.tandigitalsteps+1);
+	end
+	if m.digitaly ~= 0 then
+		ypos = ypos + (m.digitaly * ARROW_SIZE * 0.5) * round((m.digitalysteps+1) * math.sin(math.pi * (fYOffset + (1.0 * m.digitalyoffset ) ) / (ARROW_SIZE + (m.digitalyperiod * ARROW_SIZE) )) )/(m.digitalysteps+1);
+	end
+	if m.tandigitaly ~= 0 then
+		ypos = ypos + (m.tandigitaly * ARROW_SIZE * 0.5) * round((m.tandigitalysteps+1) * selectTanType(math.pi * (fYOffset + (1.0 * m.tandigitalyoffset ) ) / (ARROW_SIZE + (m.tandigitalyperiod * ARROW_SIZE) ),m.cosecant,m.secant,m.cotangent) )/(m.tandigitalysteps+1);
 	end
 	if m.bumpyx ~= 0 then
 		xpos = xpos + m.bumpyx * 40*math.sin((fYOffset+(100.0*m.bumpyxoffset))/((m.bumpyxperiod*16.0)+16.0));
@@ -1277,6 +1300,10 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 	if m.square ~= 0 then
 		local fResult = square( (math.pi * (fYOffset+(1.0*(m.squareoffset))) / (ARROW_SIZE+(m.squareperiod*ARROW_SIZE))) );
 		xpos = xpos + (m.square * ARROW_SIZE * 0.5) * fResult;
+	end
+	if m.squarey ~= 0 then
+		local fResult = square( (math.pi * (fYOffset+(1.0*(m.squareyoffset))) / (ARROW_SIZE+(m.squareyperiod*ARROW_SIZE))) );
+		ypos = ypos + (m.squarey * ARROW_SIZE * 0.5) * fResult;
 	end
     if m.bumpyy ~= 0 then
 		ypos = ypos + m.bumpyy * 40*math.sin((fYOffset+(100.0*m.bumpyyoffset))/((m.bumpyyperiod*16.0)+16.0));
@@ -1415,7 +1442,7 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 		local fRads = math.acos( fPositionBetween );
 		fRads = fRads + ((fYOffset + m.tantornadooffset) * ((6 * m.tantornadoperiod) + 6) / screenHeight)
 
-		local fAdjustedPixelOffset = scale( selectTanType(fRads,m.cosecant), -1, 1, fMinX, fMaxX );
+		local fAdjustedPixelOffset = scale( selectTanType(fRads,m.cosecant,m.secant,m.cotangent), -1, 1, fMinX, fMaxX );
 
 		xpos = xpos + (fAdjustedPixelOffset - fRealPixelOffset) * m.tantornado
     end
@@ -1444,7 +1471,7 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 		local fRads = math.acos( fPositionBetween );
 		fRads = fRads + ((fYOffset + m.tantornadozoffset) * ((6 * m.tantornadozperiod) + 6) / screenHeight)
 
-		local fAdjustedPixelOffset = scale( selectTanType(fRads,m.cosecant), -1, 1, fMinX, fMaxX );
+		local fAdjustedPixelOffset = scale( selectTanType(fRads,m.cosecant,m.secant,m.cotangent), -1, 1, fMinX, fMaxX );
 
 		zpos =zpos + (fAdjustedPixelOffset - fRealPixelOffset) * m.tantornadoz
     end
@@ -1466,7 +1493,7 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 	    zpos = zpos + m['bumpy'..iCol] * 40*math.sin((fYOffset+(100.0*m.bumpyoffset))/((m.bumpyperiod*16.0)+16.0))
 	end
 	if m.tanbumpy ~= 0 then
-		zpos = zpos + m.tanbumpy * 40*selectTanType((fYOffset+(100.0*m.tanbumpyoffset))/((m.tanbumpyperiod*16.0)+16.0),m.cosecant)
+		zpos = zpos + m.tanbumpy * 40*selectTanType((fYOffset+(100.0*m.tanbumpyoffset))/((m.tanbumpyperiod*16.0)+16.0),m.cosecant,m.secant,m.cotangent)
     end
     if m.tornadoz ~= 0 then
 		local iTornadoWidth = 2
@@ -1507,7 +1534,7 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 		zpos = zpos + (m.digitalz * ARROW_SIZE * 0.5) * round((m.digitalzsteps+1) * math.sin(math.pi * (fYOffset + (1.0 * m.digitalzoffset ) ) / (ARROW_SIZE + (m.digitalzperiod * ARROW_SIZE) )) )/(m.digitalzsteps+1);
 	end
 	if m.tandigitalz ~= 0 then
-		zpos = zpos + (m.tandigitalz * ARROW_SIZE * 0.5) * round((m.tandigitalzsteps+1) * selectTanType(math.pi * (fYOffset + (1.0 * m.tandigitalzoffset ) ) / (ARROW_SIZE + (m.tandigitalzperiod * ARROW_SIZE) ),m.cosecant) )/(m.tandigitalzsteps+1);
+		zpos = zpos + (m.tandigitalz * ARROW_SIZE * 0.5) * round((m.tandigitalzsteps+1) * selectTanType(math.pi * (fYOffset + (1.0 * m.tandigitalzoffset ) ) / (ARROW_SIZE + (m.tandigitalzperiod * ARROW_SIZE) ),m.cosecant,m.secant,m.cotangent) )/(m.tandigitalzsteps+1);
 	end
 	if m.squarez ~= 0 then
 		local fResult = square( (math.pi * (fYOffset+(1.0*(m.squarezoffset))) / (ARROW_SIZE+(m.squarezperiod*ARROW_SIZE))) );
@@ -1587,9 +1614,6 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 
 end
 
-
-
-
 defaultPositions = {{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0}}
 defaultscale = {{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0}}
 
@@ -1628,6 +1652,90 @@ function func(t)
 	end
 end
 
+
+function getInfinite()
+	local infPath = {{}, {}, {}, {}};
+	local r = 0;
+
+	for r=0,360,15 do
+		for data = 1,#infPath do
+			local rad = r * math.pi / 180;
+			table.insert(infPath[data],{x=screenWidth* 0.5 + (math.sin(rad)) * 600,
+				y=screenHeight* 0.5 + (math.sin(rad) * math.cos(rad)) * 600, z=0})
+		end
+	end
+	return infPath,1850
+end
+
+function createPath(pathfunc)
+	local pathData = {}
+	local totalDists = {}
+		local moveSpeed = 5000
+		local path,speed = pathfunc()
+		moveSpeed = speed
+    local dir = 1
+    while dir <= table.getn(path) do
+      local idx = 1
+      totalDists[dir]=0
+      pathData[dir]={}
+      while idx<=table.getn(path[dir]) do
+        local pos = path[dir][idx]
+        if idx ~= 1 then
+          local last = pathData[dir][idx-1]
+					local _x=pos.x - last.position.x
+					local _y=pos.y - last.position.y
+					local _z=pos.z - last.position.z
+          totalDists[dir] = totalDists[dir] + math.abs(_x*_x+_y*_y+_z*_z)
+          local totalDist = totalDists[dir]
+          last.End = totalDist
+          last.dist = last.start - totalDist
+				end
+        table.insert(pathData[dir], {
+          position = {x=pos.x-ARROW_SIZE/2,y=pos.y-ARROW_SIZE/2,z=pos.z},
+          start = totalDists[dir],
+          End = 0,
+          dist = 0
+        })
+        idx =idx+1
+      end
+      dir = dir+1
+    end
+		return moveSpeed,pathData,totalDists
+end
+
+function updatePath(timeDiff,pos,data,mod,pathfunc)
+		local moveSpeed,pathData,totalDists = createPath(pathfunc)
+    local vDiff = -timeDiff
+    local progress  = (vDiff / -moveSpeed) * totalDists[data+1];
+		local outPos = {}
+		for k, v in pairs(pos) do
+			outPos[k] = v
+		end
+		local function lerpV(p,g,a)
+			return{
+				x=a*g.x+p.x*(1-a),
+				y=a*g.y+p.y*(1-a),
+				z=a*g.z+p.z*(1-a),
+			}
+		end
+    local daPath = pathData[data+1];
+    if progress<=0 then return lerpV(pos,daPath[1].position,mod) end
+    local idx=1
+    while idx<=table.getn(daPath) do
+      local cData = daPath[idx];
+      local nData = daPath[idx+1];
+      if nData and cData then
+        if progress>cData.start and progress<cData.End then
+          local alpha = (cData.start - progress)/cData.dist;
+          local interpPos = lerpV(cData.position,nData.position,alpha);
+          outPos = lerpV(pos,interpPos,mod);
+				end
+      end
+      idx=idx+1
+    end
+    return outPos
+end
+
 function TEMPLATE.songStart()
 
     downscroll = false
@@ -1656,7 +1764,7 @@ end
 
 function TEMPLATE.update(elapsed)
     beat = (getSongPosition() / 1000) * (curBpm/60)
-	setProperty('spawnTime',activeMods[1].drawsize * 125)
+	setProperty('spawnTime',activeMods[1].drawsize * 2000)
 	luaDebugMode = true
 
 	--------------------------------------------------------------
@@ -1771,6 +1879,7 @@ function TEMPLATE.update(elapsed)
 
 
 	if songStarted then
+
 		for pn=1,2 do
 			local xmod = activeMods[pn].xmod
 			for col=0,3 do
@@ -1895,27 +2004,96 @@ function TEMPLATE.update(elapsed)
 				local ypos = getYAdjust(defaulty - (getSongPosition() - targTime),col,pn) * scrollSpeeds * 0.45 - off + ARROW_SIZE / 4
 					local zoom = getZoom(ypos-defaulty,col,pn)
 				local xa, ya, rz, za = arrowEffects(ypos-defaulty, col, pn, true)
+				local m=activeMods[pn]
+				local fakew = m.movew*m['movew'..col]*m.amovew*m['amovew'..col]
+				local altx,alty = defaultx + xa,ypos + ya
 
+				local offx,offy=(isSus and -(za/1000-fakew)*getPropertyFromGroup('notes',v,"offsetX") or 0),(isSus and -(za/1000-fakew)*getPropertyFromGroup('notes',v,"offsetY")+sustainoffset or 0)
+			if m.incominganglex ~= 0 or m.incomingangley ~= 0 or m.incominganglez ~= 0 then
+					local vec = {
+						x = 0,
+						y = ypos-defaulty,
+						z = 0
+					}
+					local rotatedpos = RotationXYZ(vec,m.incominganglex,m.incomingangley,m.incominganglez)
+					altx = altx+rotatedpos.x
+					alty = alty+rotatedpos.y
+					za = za + rotatedpos.z
+			end
+			if m['incominganglex'..col] ~= 0 or m['incomingangley'..col] ~= 0 or m['incominganglez'..col] ~= 0 then
+				local vec = {
+					x = 0,
+					y = ypos-defaulty,
+					z = 0
+				}
+				local rotatedpos = RotationXYZ(vec,m['incominganglex'..col],m['incomingangley'..col],m['incominganglez'..col])
+				altx= altx+rotatedpos.x
+				alty= alty+rotatedpos.y
+				za = za + rotatedpos.z
+			end
+			if m.rotatex ~= 0 or m.rotatey ~= 0 or m.rotatez ~= 0 then
+				local useX = altx
+				local useY =alty
+				local originPos = {x=screenWidth/2,y=screenHeight/2}
+				if m.rotatetype == 1 then
+					originPos.x = defaultx
+				elseif m.rotatetype ~= 0 then
+					originPos.x = m.rotateoriginx
+					originPos.y = m.rotateoriginy
+				end
+				local vec = {
+					x = useX - originPos.x,
+					y = useY - originPos.y,
+					z = za
+				}
+				local rotatedpos = RotationXYZ(vec,m.rotatex,m.rotatey,m.rotatez)
+				rotatedpos.x = rotatedpos.x + originPos.x
+				rotatedpos.y = rotatedpos.y + originPos.y
+				altx= rotatedpos.x
+				alty= rotatedpos.y
+				za = rotatedpos.z
+			end
+			if m.rotationx ~= 0 or m.rotationy ~= 0 or m.rotationz ~= 0 then
+				local useX = altx
+				local useY = alty
+				local originPos = {x=screenWidth/2-54,y=screenHeight/2}
+					originPos.x = originPos.x + (pn*2-3)*316
+				local vec = {
+					x = useX - originPos.x,
+					y = useY - originPos.y,
+					z = za * screenHeight
+				}
+				local rotatedpos = RotationXYZ(vec,m.rotationx,m.rotationy,m.rotationz)
+				rotatedpos.x = rotatedpos.x + originPos.x
+				rotatedpos.y = rotatedpos.y + originPos.y
+				altx= rotatedpos.x
+				alty= rotatedpos.y
+				za = rotatedpos.z / screenHeight
+			end
+			local paths = updatePath(targTime-getSongPosition(),{x=altx,y=alty,z=za},col,m.infinite,getInfinite)
+			altx = paths.x
+			alty = paths.y
+			za=za+paths.z
 				local xawr,yawr,rzwr,zawr = arrowEffects(ypos-defaulty,col,pn,false)
 				local alp = arrowAlpha(ypos-defaulty, col, pn, yawr)
 			    local scalex, scaley = getScale(ypos-defaulty, col, pn, defaultscale[c+1].x, defaultscale[c+1].y, true)
 				if getPropertyFromGroup('notes',v,"isSustainNote") then
 					local ypos2 = getYAdjust(defaulty - ((getSongPosition()+.1) - targTime),col,pn) * scrollSpeeds * 0.45 - off + ARROW_SIZE / 2
-
-					local xa2, ya2 = arrowEffects(ypos2-defaulty, col, pn, true, targTime)
+					local xa2, ya2 = arrowEffects(ypos2-defaulty, col, pn, true)
 					--if scrollSpeed >= 0 then
-				setPropertyFromGroup("notes",v,"angle",180+math.deg(math.atan2(((ypos2 + ya2)-(ypos + ya))*100,(xa2-xa)*100) + math.pi/2))
+				setPropertyFromGroup("notes",v,"angle",180+math.deg(math.atan2(((ypos2 + ya2) - (ypos + ya))*100,(xa2-xa)*100)+math.pi/2))
 					--else
 					--	note.angle = 180+math.deg(math.atan2(((ypos2 + ya2)-(ypos + ya))*100,(xa2-xa)*100) + math.pi/2)
 					--end
 				else
 					setPropertyFromGroup("notes",v,"angle",rz)
 				end
+
 			local m = activeMods[pn]
 
-			local fakew = m.movew*m['movew'..col]*m.amovew*m['amovew'..col]
-                setPropertyFromGroup("notes",v,"x",defaultx + xa + (isSus and -(za/1000-fakew)*getPropertyFromGroup('notes',v,"offsetX") or 0))
-            	setPropertyFromGroup("notes",v,"y",ypos + ya + (isSus and -(za/1000-fakew)*getPropertyFromGroup('notes',v,"offsetY")+sustainoffset or 0))
+
+                setPropertyFromGroup("notes",v,"x",altx+offx)
+            	setPropertyFromGroup("notes",v,"y",alty+offy)
 
 				-- from troll engine
 				local alpha = getPropertyFromGroup('notes',v,'alpha')*math.clamp(scale(alp, 0.5, 0, 1, 0),0,1)
@@ -1932,67 +2110,6 @@ function TEMPLATE.update(elapsed)
 				setPropertyFromGroup('notes',v,'colorTransform.alphaMultiplier',alpha)
 
 
-			if m.incominganglex ~= 0 or m.incomingangley ~= 0 or m.incominganglez ~= 0 then
-					local vec = {
-						x = 0,
-						y = ypos-defaulty,
-						z = 0
-					}
-					local rotatedpos = RotationXYZ(vec,m.incominganglex,m.incomingangley,m.incominganglez)
-					setPropertyFromGroup('notes', v, 'x', getPropertyFromGroup('notes',v,'x')+rotatedpos.x)
-					setPropertyFromGroup('notes', v, 'y', getPropertyFromGroup('notes',v,'y')+rotatedpos.y)
-					za = za + rotatedpos.z
-			end
-			if m['incominganglex'..col] ~= 0 or m['incomingangley'..col] ~= 0 or m['incominganglez'..col] ~= 0 then
-				local vec = {
-					x = 0,
-					y = ypos-defaulty,
-					z = 0
-				}
-				local rotatedpos = RotationXYZ(vec,m['incominganglex'..col],m['incomingangley'..col],m['incominganglez'..col])
-				setPropertyFromGroup('notes', v, 'x', getPropertyFromGroup('notes',v,'x')+rotatedpos.x)
-				setPropertyFromGroup('notes', v, 'y', getPropertyFromGroup('notes',v,'y')+rotatedpos.y)
-				za = za + rotatedpos.z
-			end
-			if m.rotatex ~= 0 or m.rotatey ~= 0 or m.rotatez ~= 0 then
-				local useX = defaultx + xa
-				local useY = ypos+ya
-				local originPos = {x=screenWidth/2,y=screenHeight/2}
-				if m.rotatetype == 1 then
-					originPos.x = defaultx
-				elseif m.rotatetype ~= 0 then
-					originPos.x = m.rotateoriginx
-					originPos.y = m.rotateoriginy
-				end
-				local vec = {
-					x = useX - originPos.x,
-					y = useY - originPos.y,
-					z = za
-				}
-				local rotatedpos = RotationXYZ(vec,m.rotatex,m.rotatey,m.rotatez)
-				rotatedpos.x = rotatedpos.x + originPos.x
-				rotatedpos.y = rotatedpos.y + originPos.y
-				setPropertyFromGroup('notes', v, 'x', rotatedpos.x + (isSus and -(za/1000-fakew)*getPropertyFromGroup('notes',v,"offsetX") or 0))
-				setPropertyFromGroup('notes', v, 'y', rotatedpos.y + (isSus and -(za/1000-fakew)*getPropertyFromGroup('notes',v,"offsetY")+sustainoffset or 0))
-				za = rotatedpos.z
-			end
-			if m.rotationx ~= 0 or m.rotationy ~= 0 or m.rotationz ~= 0 then
-				local useX = defaultx + xa
-				local useY = ypos+ya
-				local originPos = {x=screenWidth/2-54,y=screenHeight/2}
-					originPos.x = originPos.x + (pn*2-3)*316
-				local vec = {
-					x = useX - originPos.x,
-					y = useY - originPos.y,
-					z = za * screenHeight
-				}
-				local rotatedpos = RotationXYZ(vec,m.rotationx,m.rotationy,m.rotationz)
-				rotatedpos.x = rotatedpos.x + originPos.x
-				rotatedpos.y = rotatedpos.y + originPos.y
-				setPropertyFromGroup('notes', v, 'x', rotatedpos.x + (isSus and -(za/1000-fakew)*getPropertyFromGroup('notes',v,"offsetX") or 0))
-				setPropertyFromGroup('notes', v, 'y', rotatedpos.y + (isSus and -(za/1000-fakew)*getPropertyFromGroup('notes',v,"offsetY")+sustainoffset or 0))
-				zp = rotatedpos.z / screenHeight
-			end
 	local fov = 90
 	local tanHalfFOV = math.tan(math.rad(fov/2))
 			local origin={x=getPropertyFromGroup('notes',v,"x") - (screenWidth/2),y= getPropertyFromGroup('notes',v,"y") - (screenHeight/2),z=za}
@@ -2048,6 +2165,7 @@ function onCreatePost()
 	setVar("camNotes",camNotes);
 ]])
 	TEMPLATE.InitMods()
+
 	--WRITE MODS HERE!
 
 	initCommand()
@@ -2248,7 +2366,7 @@ function initCommand()
 	local m2 = func
 	local msg = mod_message
 	local mi = mod_insert
-	set{0,1,'drunk',3,'drunkoffset'}
+set{0,1,'tandigitalz'}
 end
 
 function updateCommand(elapsed,beat)
