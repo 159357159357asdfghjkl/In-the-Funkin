@@ -2065,7 +2065,7 @@ function TEMPLATE.update(elapsed)
 				rotatedpos.y = rotatedpos.y + originPos.y
 				altx= rotatedpos.x
 				alty= rotatedpos.y
-				za = rotatedpos.z
+				za = rotatedpos.z/2
 			end
 			if m.rotationx ~= 0 or m.rotationy ~= 0 or m.rotationz ~= 0 then
 				local useX = altx
@@ -2084,7 +2084,7 @@ function TEMPLATE.update(elapsed)
 				rotatedpos.y = rotatedpos.y + originPos.y
 				altx= rotatedpos.x
 				alty= rotatedpos.y
-				za = rotatedpos.z
+				za = rotatedpos.z/2
 			end
 			local paths = updatePath(targTime-getSongPosition(),{x=altx,y=alty,z=za},col,m.infinite,getInfinite)
 			altx = paths.x
@@ -2402,7 +2402,7 @@ function initCommand()
 
  local 设置,缓动 = set,ease
  local 醉了,微醺了 = 'drunk','tipsy'
- 设置{0,1,'glitch'}
+ 缓动{0,20,linear,360*3,'incominganglex'}
 end
 
 function updateCommand(elapsed,beat)
