@@ -7,6 +7,7 @@ TEMPLATE = {}
 	The template is modified from TaroNuke's TEMPLATE 1,
 	now i will keep updating this shit instead of updating the old one,
 	only for psych engine (support version >= 0.6.3)
+	i prefer to use windows psych engine 0.7.3
 	it's like psych modcharting tool lua style
 	Credits:
 		Original Template : TaroNuke
@@ -751,11 +752,12 @@ modList = {
 	drawsize = 1,
 	stealthtype = 1, -- bool
 	stealthpastreceptors = 1, -- bool
-	glow = 1, -- bool
 	wiggle = 0,
 	smooth = 0,
 	centered = 0,
 	infinite = 0,
+	glitch = 0,
+	rendertype = 0,
 }
 
 --column specific mods
@@ -807,6 +809,7 @@ tweenLen = {{},{}}
 tweenCurve = {{},{}}
 tweenEx1 = {{},{}}
 tweenEx2 = {{},{}}
+tweenFlip = {{},{}}
 modnames = {}
 
 function definemod(t)
@@ -882,7 +885,11 @@ function receptorAlpha(iCol,pn)
 	local alp = 1
 
 	local m = activeMods[pn]
-
+	if m.glitch ~= 0 then
+		local time = getSongPosition()/1000
+		local f = math.sin(time * 50)
+		alp = alp + (f-1)
+	end
 	if m.alpha ~= 1 then
 		alp = alp*m.alpha
 	end
@@ -929,6 +936,7 @@ function arrowAlpha(fYOffset, iCol,pn,ypos)
 		f=quantize(f,0.3333)
 		alp = alp + scale( f, 0, 1, -1, 0 );
 	end
+
 	if m.randomvanish ~= 0 then
 		local fRealFadeDist = 80;
 		alp = alp + scale( math.abs(fYPos-360), fRealFadeDist, 2*fRealFadeDist, -1, 0 ) * m.randomvanish;
@@ -1795,6 +1803,8 @@ function TEMPLATE.update(elapsed)
 				tweenStart[pn][mn] = v[1]
 				tweenLen[pn][mn] = dur
 				tweenCurve[pn][mn] = v[3]
+				if not v.flip then v.flip = false end
+				tweenFlip[pn][mn] = v.flip
 				if v.startVal then
 					storedMods[pn][mn] = v.startVal
 				else
@@ -1823,7 +1833,8 @@ function TEMPLATE.update(elapsed)
 				local startstrength = storedMods[pn][v]
 				local diff = targetMods[pn][v] - startstrength
 				local curve = tweenCurve[pn][v]
-				local strength = curve(curtime, startstrength, diff, duration, tweenEx1[pn][v], tweenEx2[pn][v])
+				local str = curve(curtime, startstrength, diff, duration, tweenEx1[pn][v], tweenEx2[pn][v])
+				local strength = tweenFlip[pn][v] and 1 - str or str
 				activeMods[pn][v] = strength
 				if beat > tweenStart[pn][v]+duration then
 					isTweening[pn][v] = false
@@ -1892,7 +1903,7 @@ function TEMPLATE.update(elapsed)
 				local defaultx, defaulty = defaultPositions[c+1].x, defaultPositions[c+1].y
 			setPropertyFromGroup('strumLineNotes', c, 'x', defaultx + xp)
 			setPropertyFromGroup('strumLineNotes', c, 'y', defaulty + yp)
-                setPropertyFromGroup("strumLineNotes",c,"angle",rz)
+
 				local alpha = getPropertyFromGroup('strumLineNotes',c,'alpha')*math.clamp(scale(alp, 0.5, 0, 1, 0),0,1)
 				setPropertyFromGroup('strumLineNotes',c,'colorTransform.alphaMultiplier',alpha)
 
@@ -1923,19 +1934,22 @@ function TEMPLATE.update(elapsed)
 			local useX = defaultx + xp
 			local useY = defaulty + yp
 			local originPos = {x=screenWidth/2-54,y=screenHeight/2}
-				originPos.x = originPos.x + (pn*2-3)*316
+			local xs = {92,204,316,428}
+			local cx = (xs[4] + ARROW_SIZE - xs[1]) / 2 + xs[1]
+				originPos.x = originPos.x + (pn*2-3)*cx
 			local vec = {
 				x = useX - originPos.x,
 				y = useY - originPos.y,
-				z = zp * screenHeight
+				z = zp
 			}
 			local rotatedpos = RotationXYZ(vec,m.rotationx,m.rotationy,m.rotationz)
 			rotatedpos.x = rotatedpos.x + originPos.x
 			rotatedpos.y = rotatedpos.y + originPos.y
 			setPropertyFromGroup('strumLineNotes', c, 'x', rotatedpos.x)
 			setPropertyFromGroup('strumLineNotes', c, 'y', rotatedpos.y)
-			zp = rotatedpos.z / screenHeight
+			zp = rotatedpos.z
 		end
+		setPropertyFromGroup("strumLineNotes",c,"angle",rz)
 			local scalex, scaley = getScale(0, col, pn, defaultscale[c+1].x, defaultscale[c+1].y, false)
 
 	local fov = 90
@@ -2057,31 +2071,45 @@ function TEMPLATE.update(elapsed)
 				local useX = altx
 				local useY = alty
 				local originPos = {x=screenWidth/2-54,y=screenHeight/2}
-					originPos.x = originPos.x + (pn*2-3)*316
+				local xs = {92,204,316,428}
+				local cx = (xs[4] + ARROW_SIZE - xs[1]) / 2 + xs[1]
+					originPos.x = originPos.x + (pn*2-3)*cx
 				local vec = {
 					x = useX - originPos.x,
 					y = useY - originPos.y,
-					z = za * screenHeight
+					z = za
 				}
 				local rotatedpos = RotationXYZ(vec,m.rotationx,m.rotationy,m.rotationz)
 				rotatedpos.x = rotatedpos.x + originPos.x
 				rotatedpos.y = rotatedpos.y + originPos.y
 				altx= rotatedpos.x
 				alty= rotatedpos.y
-				za = rotatedpos.z / screenHeight
+				za = rotatedpos.z
 			end
 			local paths = updatePath(targTime-getSongPosition(),{x=altx,y=alty,z=za},col,m.infinite,getInfinite)
 			altx = paths.x
 			alty = paths.y
 			za=za+paths.z
+			altx = altx + offx
+			alty = alty + offy
+
 				local xawr,yawr,rzwr,zawr = arrowEffects(ypos-defaulty,col,pn,false)
 				local alp = arrowAlpha(ypos-defaulty, col, pn, yawr)
 			    local scalex, scaley = getScale(ypos-defaulty, col, pn, defaultscale[c+1].x, defaultscale[c+1].y, true)
 				if getPropertyFromGroup('notes',v,"isSustainNote") then
-					local ypos2 = getYAdjust(defaulty - ((getSongPosition()+.1) - targTime),col,pn) * scrollSpeeds * 0.45 - off + ARROW_SIZE / 2
+					local ypos2 = getYAdjust(defaulty - ((getSongPosition()+.1) - targTime),col,pn) * scrollSpeeds * 0.45 - off + ARROW_SIZE / 4
 					local xa2, ya2 = arrowEffects(ypos2-defaulty, col, pn, true)
 					--if scrollSpeed >= 0 then
-				setPropertyFromGroup("notes",v,"angle",180+math.deg(math.atan2(((ypos2 + ya2) - (ypos + ya))*100,(xa2-xa)*100)+math.pi/2))
+					if m.rendertype == 1 then
+						local vDiff = getYAdjust(defaulty - (getSongPosition() + 75 - targTime),col,pn) * scrollSpeeds * 0.45 - off + ARROW_SIZE / 4
+						local nextPos,nextPos2 = arrowEffects(vDiff-defaulty, col, pn, true)
+						nextPos = nextPos+offx
+						nextPos2 = nextPos2+offy
+						local deg = math.deg(math.atan2((vDiff+nextPos2)-(ypos+ya+offy),(nextPos+defaultx - (xa+defaultx+offx))))
+						setPropertyFromGroup('notes',v,'angle',(deg ~= 0 and deg + 90 or 0))
+					else
+				setPropertyFromGroup("notes",v,"angle",math.deg(math.atan2(((ypos2 + ya2)-(ypos + ya))*100,(xa2-xa)*100)+math.pi/2))
+					end
 					--else
 					--	note.angle = 180+math.deg(math.atan2(((ypos2 + ya2)-(ypos + ya))*100,(xa2-xa)*100) + math.pi/2)
 					--end
@@ -2092,21 +2120,19 @@ function TEMPLATE.update(elapsed)
 			local m = activeMods[pn]
 
 
-                setPropertyFromGroup("notes",v,"x",altx+offx)
-            	setPropertyFromGroup("notes",v,"y",alty+offy)
+                setPropertyFromGroup("notes",v,"x",altx)
+            	setPropertyFromGroup("notes",v,"y",alty)
 
 				-- from troll engine
 				local alpha = getPropertyFromGroup('notes',v,'alpha')*math.clamp(scale(alp, 0.5, 0, 1, 0),0,1)
 				local glow = math.clamp(scale(alp, 1, 0.5, 0, 1.3),0,1)
 
-				if m.glow ~= 0 then
 				setPropertyFromGroup('notes',v,'colorTransform.redMultiplier',1 - glow)
 				setPropertyFromGroup('notes',v,'colorTransform.greenMultiplier',1 - glow)
 				setPropertyFromGroup('notes',v,'colorTransform.blueMultiplier',1 - glow)
 				setPropertyFromGroup('notes',v,'colorTransform.redOffset',glow*255)
 				setPropertyFromGroup('notes',v,'colorTransform.greenOffset',glow*255)
 				setPropertyFromGroup('notes',v,'colorTransform.blueOffset',glow*255)
-				end
 				setPropertyFromGroup('notes',v,'colorTransform.alphaMultiplier',alpha)
 
 
@@ -2193,6 +2219,13 @@ end
 function initCommand()
 	-- plugins
 	-- there are many functions that can be used in fnf
+	local function flicker()
+		if (getSongPosition() * 0.001 * 60) % 2 < 1 then
+			return -1
+		else
+			return 1
+		end
+	end
     local function hide(t)
 		local bt,tpn = t[1],t.pn
 		for i=0,3 do
@@ -2366,7 +2399,10 @@ function initCommand()
 	local m2 = func
 	local msg = mod_message
 	local mi = mod_insert
-set{0,1,'tandigitalz'}
+
+ local 设置,缓动 = set,ease
+ local 醉了,微醺了 = 'drunk','tipsy'
+ 设置{0,1,'glitch'}
 end
 
 function updateCommand(elapsed,beat)
