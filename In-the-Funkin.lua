@@ -11,7 +11,7 @@ TEMPLATE = {}
 	it's like psych modcharting tool lua style
 	Credits:
 		Original Template : TaroNuke
-		Modified : UntilYouAreGone
+		Modified : UntilYouAreGone / asdf1234 / 159357159357asdfghjkl
 ]]
 
 
@@ -726,10 +726,10 @@ modList = {
 	rotatetype = 0,
 	rotateoriginx = 0, -- optional value
 	rotateoriginy = 0, -- optional value
-	scalex = 0,
-	scaley = 0,
-	scalez = 0,
-	scale = 0,
+	scalex = 1,
+	scaley = 1,
+	scalez = 1,
+	scale = 1,
 	movew = 1,
 	amovew = 1,
 	waveoffset = 0,
@@ -757,7 +757,9 @@ modList = {
 	centered = 0,
 	infinite = 0,
 	glitch = 0,
-	rendertype = 0,
+	spiralx = 0,
+	spiralxoffset = 0,
+	spiralxperiod = 0
 }
 
 --column specific mods
@@ -783,10 +785,10 @@ for i=0,3 do
 	modList['reverse'..i] = 0
 	modList['tiny'..i] = 0
 	modList['zoom'..i] = 0
-	modList['scalex'..i] = 0
-	modList['scaley'..i] = 0
-	modList['scalez'..i] = 0
-	modList['scale'..i] = 0
+	modList['scalex'..i] = 1
+	modList['scaley'..i] = 1
+	modList['scalez'..i] = 1
+	modList['scale'..i] = 1
 	modList['squish'..i] = 0
 	modList['stretch'..i] = 0
 	modList['bumpy'..i] = 0
@@ -1021,7 +1023,6 @@ function getYAdjust(fYOffset, iCol, pn)
 	fYOffset = fYOffset * fScrollSpeed
 	return fYOffset
 end
-
 function getZoom(fYOffset, iCol, pn)
 	local m = activeMods[pn]
     local fZoom = 1
@@ -1061,9 +1062,9 @@ function getScale(fYOffset, iCol, pn, sx, sy, isNote)
     local y = sy
 	local z = 0
     local m = activeMods[pn]
-	x = x + m.scalex + m['scalex'..iCol] + m.scale + m['scale'..iCol]
-    y = y + m.scaley + m['scaley'..iCol] + m.scale + m['scale'..iCol]
-	z = z + m.scalez + m['scalez'..iCol] + m.scale + m['scale'..iCol]
+	x = x * m.scalex * m['scalex'..iCol] * m.scale * m['scale'..iCol]
+    y = y * m.scaley * m['scaley'..iCol] * m.scale * m['scale'..iCol]
+	z = z * m.scalez * m['scalez'..iCol] * m.scale * m['scale'..iCol]
 
     local stretch = m.stretch + m['stretch'..iCol]
     local squish = m.squish + m['squish'..iCol]
@@ -1772,8 +1773,10 @@ end
 
 function TEMPLATE.update(elapsed)
     beat = (getSongPosition() / 1000) * (curBpm/60)
-	setProperty('spawnTime',activeMods[1].drawsize * 2000)
+	setProperty('spawnTime',activeMods[1].drawsize * 2500)
+	if bTestMode then
 	luaDebugMode = true
+	end
 
 	--------------------------------------------------------------
 	-- modified version of exschwasion's template 1 ease reader
@@ -1901,16 +1904,15 @@ function TEMPLATE.update(elapsed)
 				--print('Areceptor '..c..' is '..tostring(receptor))
 
 				local defaultx, defaulty = defaultPositions[c+1].x, defaultPositions[c+1].y
-			setPropertyFromGroup('strumLineNotes', c, 'x', defaultx + xp)
-			setPropertyFromGroup('strumLineNotes', c, 'y', defaulty + yp)
 
 				local alpha = getPropertyFromGroup('strumLineNotes',c,'alpha')*math.clamp(scale(alp, 0.5, 0, 1, 0),0,1)
 				setPropertyFromGroup('strumLineNotes',c,'colorTransform.alphaMultiplier',alpha)
 
 	local m = activeMods[pn]
+	local altx,alty = defaultx+xp,defaulty+yp
 		if m.rotatex ~= 0 or m.rotatey ~= 0 or m.rotatez ~= 0 then
-			local useX = defaultx + xp
-			local useY = defaulty + yp
+			local useX = altx
+			local useY = alty
 			local originPos = {x=screenWidth/2,y=screenHeight/2}
 				if m.rotatetype == 1 then
 					originPos.x = defaultx
@@ -1926,14 +1928,14 @@ function TEMPLATE.update(elapsed)
 			local rotatedpos = RotationXYZ(vec,m.rotatex,m.rotatey,m.rotatez)
 			rotatedpos.x = rotatedpos.x + originPos.x
 			rotatedpos.y = rotatedpos.y + originPos.y
-			setPropertyFromGroup('strumLineNotes', c, 'x', rotatedpos.x)
-			setPropertyFromGroup('strumLineNotes', c, 'y', rotatedpos.y)
+			altx= rotatedpos.x
+			alty= rotatedpos.y
 			zp = rotatedpos.z
 		end
 		if m.rotationx ~= 0 or m.rotationy ~= 0 or m.rotationz ~= 0 then
-			local useX = defaultx + xp
-			local useY = defaulty + yp
-			local originPos = {x=screenWidth/2-54,y=screenHeight/2}
+			local useX = altx
+			local useY = alty
+			local originPos = {x=screenWidth/2-ARROW_SIZE/2,y=screenHeight/2}
 			local xs = {92,204,316,428}
 			local cx = (xs[4] + ARROW_SIZE - xs[1]) / 2 + xs[1]
 				originPos.x = originPos.x + (pn*2-3)*cx
@@ -1945,10 +1947,13 @@ function TEMPLATE.update(elapsed)
 			local rotatedpos = RotationXYZ(vec,m.rotationx,m.rotationy,m.rotationz)
 			rotatedpos.x = rotatedpos.x + originPos.x
 			rotatedpos.y = rotatedpos.y + originPos.y
-			setPropertyFromGroup('strumLineNotes', c, 'x', rotatedpos.x)
-			setPropertyFromGroup('strumLineNotes', c, 'y', rotatedpos.y)
+			altx = rotatedpos.x
+			alty = rotatedpos.y
 			zp = rotatedpos.z
 		end
+			setPropertyFromGroup('strumLineNotes', c, 'x', altx)
+			setPropertyFromGroup('strumLineNotes', c, 'y', alty)
+
 		setPropertyFromGroup("strumLineNotes",c,"angle",rz)
 			local scalex, scaley = getScale(0, col, pn, defaultscale[c+1].x, defaultscale[c+1].y, false)
 
@@ -1956,22 +1961,14 @@ function TEMPLATE.update(elapsed)
 	local tanHalfFOV = math.tan(math.rad(fov/2))
 
 	local fakew = m.movew*m['movew'..col]*m.amovew*m['amovew'..col]
-			local origin={x=getPropertyFromGroup("strumLineNotes",c,"x") - (screenWidth/2),y=getPropertyFromGroup("strumLineNotes",c,"y") - (screenHeight/2),z=zp}
-			local r = {
-				x = 0,
-				y = 0,
-				z = 0
-				}
-			local pos={x=origin.x+r.x,y=origin.y+r.y,z=(origin.z+r.z)/1000-fakew}
-			local X = pos.x*(1/tanHalfFOV)/-pos.z+(screenWidth/2)
+			local origin={x=getPropertyFromGroup('strumLineNotes',c,'x') - (screenWidth/2),y=getPropertyFromGroup('strumLineNotes',c,'y') - (screenHeight/2),z=zp}
+			local pos={x=origin.x,y=origin.y,z=(origin.z)/1000-fakew}
+			local X = pos.x/(1/tanHalfFOV)/-pos.z+(screenWidth/2)
 			local Y = pos.y/(1/tanHalfFOV)/-pos.z+(screenHeight/2)
 			setPropertyFromGroup('strumLineNotes', c, 'x', X)
 			setPropertyFromGroup('strumLineNotes', c, 'y', Y)
-
-			local scale = -pos.z
-			scale = 1 / scale
-			setPropertyFromGroup('strumLineNotes', c, 'scale.x', scalex * scale)
-			setPropertyFromGroup('strumLineNotes', c, 'scale.y', scaley * scale)
+			setPropertyFromGroup('strumLineNotes', c, 'scale.x', scalex / -pos.z)
+			setPropertyFromGroup('strumLineNotes', c, 'scale.y', scaley / -pos.z)
 
     		local zoom = getZoom(0,col,pn)
 			setPropertyFromGroup("strumLineNotes",c,"scale.x",getPropertyFromGroup("strumLineNotes",c,"scale.x")*zoom)
@@ -2012,37 +2009,34 @@ function TEMPLATE.update(elapsed)
 					speed = activeMods[pn].mmod
 				end
 				local scrollSpeeds = speed * (1 - 2*getReverseForCol(col,pn)) * scrollSpeed
-				local sustainoffset = 35 * scrollSpeeds
 				local off = (1 - 2*getReverseForCol(col,pn))
-
-				local ypos = getYAdjust(defaulty - (getSongPosition() - targTime),col,pn) * scrollSpeeds * 0.45 - off + ARROW_SIZE / 4
-					local zoom = getZoom(ypos-defaulty,col,pn)
-				local xa, ya, rz, za = arrowEffects(ypos-defaulty, col, pn, true)
+				local ypos = getYAdjust((getSongPosition() - targTime)*(downscroll and 1 or -1),col,pn) * scrollSpeeds * 0.45 - off + defaulty
+				local zoom = getZoom(ypos,col,pn)
+				local xa, ya, rz, za = arrowEffects(ypos, col, pn, true)
 				local m=activeMods[pn]
 				local fakew = m.movew*m['movew'..col]*m.amovew*m['amovew'..col]
 				local altx,alty = defaultx + xa,ypos + ya
-
-				local offx,offy=(isSus and -(za/1000-fakew)*getPropertyFromGroup('notes',v,"offsetX") or 0),(isSus and -(za/1000-fakew)*getPropertyFromGroup('notes',v,"offsetY")+sustainoffset or 0)
+				local offx,offy=getPropertyFromGroup('notes',v,"offsetX"),getPropertyFromGroup('notes',v,"offsetY")
 			if m.incominganglex ~= 0 or m.incomingangley ~= 0 or m.incominganglez ~= 0 then
 					local vec = {
 						x = 0,
-						y = ypos-defaulty,
+						y = ypos,
 						z = 0
 					}
 					local rotatedpos = RotationXYZ(vec,m.incominganglex,m.incomingangley,m.incominganglez)
 					altx = altx+rotatedpos.x
-					alty = alty+rotatedpos.y
+					alty = rotatedpos.y
 					za = za + rotatedpos.z
 			end
 			if m['incominganglex'..col] ~= 0 or m['incomingangley'..col] ~= 0 or m['incominganglez'..col] ~= 0 then
 				local vec = {
 					x = 0,
-					y = ypos-defaulty,
+					y = ypos,
 					z = 0
 				}
 				local rotatedpos = RotationXYZ(vec,m['incominganglex'..col],m['incomingangley'..col],m['incominganglez'..col])
 				altx= altx+rotatedpos.x
-				alty= alty+rotatedpos.y
+				alty= rotatedpos.y
 				za = za + rotatedpos.z
 			end
 			if m.rotatex ~= 0 or m.rotatey ~= 0 or m.rotatez ~= 0 then
@@ -2065,12 +2059,12 @@ function TEMPLATE.update(elapsed)
 				rotatedpos.y = rotatedpos.y + originPos.y
 				altx= rotatedpos.x
 				alty= rotatedpos.y
-				za = rotatedpos.z/2
+				za = rotatedpos.z
 			end
 			if m.rotationx ~= 0 or m.rotationy ~= 0 or m.rotationz ~= 0 then
 				local useX = altx
 				local useY = alty
-				local originPos = {x=screenWidth/2-54,y=screenHeight/2}
+				local originPos = {x=screenWidth/2-ARROW_SIZE/2,y=screenHeight/2}
 				local xs = {92,204,316,428}
 				local cx = (xs[4] + ARROW_SIZE - xs[1]) / 2 + xs[1]
 					originPos.x = originPos.x + (pn*2-3)*cx
@@ -2084,32 +2078,21 @@ function TEMPLATE.update(elapsed)
 				rotatedpos.y = rotatedpos.y + originPos.y
 				altx= rotatedpos.x
 				alty= rotatedpos.y
-				za = rotatedpos.z/2
+				za = rotatedpos.z
 			end
+
 			local paths = updatePath(targTime-getSongPosition(),{x=altx,y=alty,z=za},col,m.infinite,getInfinite)
 			altx = paths.x
 			alty = paths.y
-			za=za+paths.z
-			altx = altx + offx
-			alty = alty + offy
 
-				local xawr,yawr,rzwr,zawr = arrowEffects(ypos-defaulty,col,pn,false)
-				local alp = arrowAlpha(ypos-defaulty, col, pn, yawr)
-			    local scalex, scaley = getScale(ypos-defaulty, col, pn, defaultscale[c+1].x, defaultscale[c+1].y, true)
+				local xawr,yawr,rzwr,zawr = arrowEffects(ypos,col,pn,false)
+				local alp = arrowAlpha(ypos, col, pn, yawr)
+			    local scalex, scaley = getScale(ypos, col, pn, defaultscale[c+1].x, defaultscale[c+1].y, true)
 				if getPropertyFromGroup('notes',v,"isSustainNote") then
-					local ypos2 = getYAdjust(defaulty - ((getSongPosition()+.1) - targTime),col,pn) * scrollSpeeds * 0.45 - off + ARROW_SIZE / 4
-					local xa2, ya2 = arrowEffects(ypos2-defaulty, col, pn, true)
+					local ypos2 = getYAdjust(((getSongPosition()+.1) - targTime)*(downscroll and 1 or -1),col,pn) * scrollSpeeds * 0.45 - off + defaulty
+					local xa2, ya2 = arrowEffects(ypos2, col, pn, true)
 					--if scrollSpeed >= 0 then
-					if m.rendertype == 1 then
-						local vDiff = getYAdjust(defaulty - (getSongPosition() + 75 - targTime),col,pn) * scrollSpeeds * 0.45 - off + ARROW_SIZE / 4
-						local nextPos,nextPos2 = arrowEffects(vDiff-defaulty, col, pn, true)
-						nextPos = nextPos+offx
-						nextPos2 = nextPos2+offy
-						local deg = math.deg(math.atan2((vDiff+nextPos2)-(ypos+ya+offy),(nextPos+defaultx - (xa+defaultx+offx))))
-						setPropertyFromGroup('notes',v,'angle',(deg ~= 0 and deg + 90 or 0))
-					else
 				setPropertyFromGroup("notes",v,"angle",math.deg(math.atan2(((ypos2 + ya2)-(ypos + ya))*100,(xa2-xa)*100)+math.pi/2))
-					end
 					--else
 					--	note.angle = 180+math.deg(math.atan2(((ypos2 + ya2)-(ypos + ya))*100,(xa2-xa)*100) + math.pi/2)
 					--end
@@ -2118,9 +2101,7 @@ function TEMPLATE.update(elapsed)
 				end
 
 			local m = activeMods[pn]
-
-
-                setPropertyFromGroup("notes",v,"x",altx)
+              setPropertyFromGroup("notes",v,"x",altx)
             	setPropertyFromGroup("notes",v,"y",alty)
 
 				-- from troll engine
@@ -2141,14 +2122,11 @@ function TEMPLATE.update(elapsed)
 			local origin={x=getPropertyFromGroup('notes',v,"x") - (screenWidth/2),y= getPropertyFromGroup('notes',v,"y") - (screenHeight/2),z=za}
 			local pos={x=origin.x,y=origin.y,z=origin.z/1000-fakew}
 
-			local X = pos.x*(1/tanHalfFOV)/-pos.z+(screenWidth/2)
+			local X = pos.x/(1/tanHalfFOV)/-pos.z+(screenWidth/2)
 			local Y = pos.y/(1/tanHalfFOV)/-pos.z+(screenHeight/2)
-			setPropertyFromGroup('notes', v, 'x', X)
-			setPropertyFromGroup('notes', v, 'y', Y)
-			local scale = -pos.z
-			scale = 1 / scale
+
 			local scalenewy=getPropertyFromGroup('notes',v,"isSustainNote") and 1 or scaley
-			setPropertyFromGroup('notes', v, 'scale.x', scalex * scale)
+			setPropertyFromGroup('notes', v, 'scale.x', scalex / -pos.z)
 			local yscale = 1
 			local susend = string.find(string.lower(getPropertyFromGroup('notes', v, 'animation.curAnim.name')), 'end') or string.find(string.lower(getPropertyFromGroup('notes', v, 'animation.curAnim.name')), 'tail')
 			if getPropertyFromGroup('notes',v,"isSustainNote") then
@@ -2158,11 +2136,13 @@ function TEMPLATE.update(elapsed)
 					yscale = 1
 				end
 		    end
-			setPropertyFromGroup('notes', v, 'scale.y', scalenewy * scale * yscale)
-			setPropertyFromGroup("notes",v,"scale.x",(getPropertyFromGroup('notes',v,"scale.x")*zoom))
-  			setPropertyFromGroup("notes",v,"scale.y",(getPropertyFromGroup('notes',v,"scale.y")*zoom))
+			setPropertyFromGroup('notes', v, 'scale.y', scalenewy / -pos.z * yscale)
+			setPropertyFromGroup("notes",v,"scale.x",getPropertyFromGroup('notes',v,"scale.x")*zoom)
+  			setPropertyFromGroup("notes",v,"scale.y",getPropertyFromGroup('notes',v,"scale.y")*zoom)
+			setPropertyFromGroup('notes', v, 'x', X+offx)
+			setPropertyFromGroup('notes', v, 'y', Y+offy)
 			end
-			updateHitboxFromGroup('notes',v)
+
 		end
 
 	end
@@ -2199,17 +2179,13 @@ function onCreatePost()
 	--must be called at END of start
 	TEMPLATE.setup()
 
-end
-
-function onSongStart()
-
-    TEMPLATE.songStart()
+  TEMPLATE.songStart()
 
 	--for i=0,7,1 do
 	--	print('default position '..i..' = '..defaultPositions[i+1].x)
 	--end
-
 end
+
 
 function onUpdatePost(elapsed)
 	TEMPLATE.update(elapsed)
@@ -2377,20 +2353,7 @@ function initCommand()
 	local function modulo(a, b)
 		return a - math.floor(a / b) * b
 	end
-	local stringbuilder_mt =  {
-		__index = {
-			build = table.concat,
-			clear = iclear,
-		},
-		__call = function(self, a)
-			table.insert(self, tostring(a))
-			return self
-		end,
-		__tostring = table.concat,
-		}
-	local function stringbuilder()
-			return setmetatable({}, stringbuilder_mt)
-	end
+
 	--end mod plugins
 
 	local me = ease
@@ -2399,10 +2362,12 @@ function initCommand()
 	local m2 = func
 	local msg = mod_message
 	local mi = mod_insert
+end
 
- local 设置,缓动 = set,ease
- local 醉了,微醺了 = 'drunk','tipsy'
- 缓动{0,20,linear,360*3,'incominganglex'}
+bTestMode = true -- debug
+
+function onCreate()
+	if bTestMode then setProperty('skipCountdown',true) end
 end
 
 function updateCommand(elapsed,beat)
