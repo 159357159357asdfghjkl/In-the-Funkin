@@ -2174,7 +2174,7 @@ function TEMPLATE.update(elapsed)
 				setPropertyFromGroup('notes',v,'colorTransform.blueOffset',glow*255)
 				setPropertyFromGroup('notes',v,'colorTransform.alphaMultiplier',alpha)
 
-
+				forEachCommand(getPropertyFromGroup('notes',v,'ID'),col,getPropertyFromGroup('notes',v,"mustPress"))
 				local wpos = getNotefieldZoom(pn)
 				local scrx,scry = (screenWidth/2),(screenHeight/2)
 				setPropertyFromGroup("notes",v,"x",(getPropertyFromGroup('notes',v,"x") - scrx)*wpos+scrx)
@@ -2444,11 +2444,14 @@ function initCommand()
 	local m2 = func
 	local msg = mod_message
 	local mi = mod_insert
-
-	set{0,1,'curve',1,'curveperiod'}
 end
 
 function updateCommand(elapsed,beat)
+	luaDebugMode = true
+end
+
+function forEachCommand(id, column, isPlayer)
+
 end
 
 --end callbacks
