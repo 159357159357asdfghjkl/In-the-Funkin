@@ -425,15 +425,11 @@ local sine_index_mod = sine_table_size * 2
 local sine_table_index_mult = sine_index_mod / (math.pi * 2)
 local sine_table = {}
 local table_is_inited = false
-
+for i = 0,sine_table_size-1 do
+	local angle = i * math.pi / sine_table_size
+	sine_table[i] = math.sin(angle)
+end
 function fastSin(x)
-	if table_is_inited == false then
-		for i = 0,sine_table_size-1 do
-			local angle = i * math.pi / sine_table_size
-			sine_table[i] = math.sin(angle)
-		end
-		table_is_inited = true
-	end
 	if x == 0 then return 0 end
 	local index = x * sine_table_index_mult
 	while index < 0 do
@@ -784,8 +780,6 @@ modList = {
 	rotatey = 0,
 	rotatez = 0,
 	rotatetype = 0,
-	rotateoriginx = 0, -- optional value
-	rotateoriginy = 0, -- optional value
 	scalex = 1,
 	scaley = 1,
 	scalez = 1,
@@ -812,12 +806,19 @@ modList = {
 	drawsize = 1,
 	stealthtype = 1, -- bool
 	stealthpastreceptors = 1, -- bool
-	smooth = 0,
+	spinx = 0,
+	spinxspeed = 0,
+	spiny = 0,
+	spinyspeed = 0,
 	centered = 0,
 	infinite = 0,
 	glitch = 0,
 	hidenoteflash = 0,
 	longboy = 0,
+	mini = 0,
+	curve = 0,
+	curveoffset = 0,
+	curveperiod = 0,
 }
 
 --column specific mods
@@ -852,6 +853,14 @@ for i=0,3 do
 	modList['bumpy'..i] = 0
 	modList['xmod'..i] = 1 --column specific scrollSpeed multiplier
 end
+
+function setdefault(self)
+	for i = 1, #self, 2 do
+		modList[self[i + 1]] = self[i]
+	end
+end
+
+ -- if you want to set default, write it here
 
 activeMods = {{},{}}
 
@@ -1654,52 +1663,28 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 		end
 
 	end
-	if m.smooth ~= 0 then
-		ypos = ypos + fastSin(getSongPosition() / 1000 * 2 + iCol*0.8) * ARROW_SIZE / 2 * m.smooth
-		xpos = xpos + fastCos(getSongPosition() / 1000 * 3 + iCol*0.8) * ARROW_SIZE / 2 * m.smooth
+	if m.spinx ~= 0 then
+		xpos = xpos + m.spinx * ARROW_SIZE / 2 * math.sin((beat * m.spinxspeed + iCol*0.25) * math.pi)
+	end
+	if m.spiny ~= 0 then
+		ypos = ypos + m.spiny * ARROW_SIZE / 2 * math.sin((beat * m.spinyspeed + iCol*0.25) * math.pi)
+	end
+	if m.curve ~= 0 then
+		zpos = zpos + math.abs(fastSin(((fYOffset + m.curveoffset) / (90
+		+ (m.curveperiod * 90))))) * ARROW_SIZE / 2;
 	end
     return xpos, ypos, rotz, zpos
 
 end
 
-defaultPositions = {{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0}}
-defaultscale = {{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0}}
-
-
--- events
-
-mods,curmod = {},1
-perframe = {}
-event,curevent = {},1
-songStarted = false
-
--- some of mirin functions
-function set(t)
-	table.insert(t,2,0)
-	table.insert(t,3,instant)
-	ease(t)
-end
-function ease(t)
-	table.insert(mods,t)
-end
-function add(t)
-	t.relative = true
-	ease(t)
-end
-function acc(t)
-	t.relative = true
-	table.insert(t,2,0)
-	table.insert(t,3,instant)
-	ease(t)
-end
-function func(t)
-	if type(t[2]) == 'number' then
-		table.insert(perframe,t)
-	else
-		table.insert(event,t)
+function getNotefieldZoom(pn)
+	local a = activeMods[pn]
+	local val = 1
+	if a.mini ~= 0 then
+		val = 1 - a.mini * .5
 	end
+	return val
 end
-
 
 function getInfinite()
 	local infPath = {{}, {}, {}, {}};
@@ -1784,6 +1769,44 @@ function updatePath(timeDiff,pos,data,mod,pathfunc)
     return outPos
 end
 
+defaultPositions = {{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0}}
+defaultscale = {{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0},{x=0,y=0}}
+
+
+-- events
+
+mods,curmod = {},1
+perframe = {}
+event,curevent = {},1
+songStarted = false
+
+-- some of mirin functions
+function set(t)
+	table.insert(t,2,0)
+	table.insert(t,3,instant)
+	ease(t)
+end
+function ease(t)
+	table.insert(mods,t)
+end
+function add(t)
+	t.relative = true
+	ease(t)
+end
+function acc(t)
+	t.relative = true
+	table.insert(t,2,0)
+	table.insert(t,3,instant)
+	ease(t)
+end
+function func(t)
+	if type(t[2]) == 'number' then
+		table.insert(perframe,t)
+	else
+		table.insert(event,t)
+	end
+end
+
 function TEMPLATE.songStart()
 
     downscroll = false
@@ -1811,11 +1834,8 @@ function TEMPLATE.songStart()
 end
 
 function TEMPLATE.update(elapsed)
-    beat = (getSongPosition() / 1000) * (curBpm/60)
+	beat = curDecBeat
 	setProperty('spawnTime',activeMods[1].drawsize * 2500)
-	if bTestMode then
-	luaDebugMode = true
-	end
 
 	--------------------------------------------------------------
 	-- modified version of exschwasion's template 1 ease reader
@@ -1994,18 +2014,21 @@ function TEMPLATE.update(elapsed)
 		setPropertyFromGroup("strumLineNotes",c,"angle",rz)
 			local scalex, scaley = getScale(0, col, pn, defaultscale[c+1].x, defaultscale[c+1].y, false)
 
+			local wpos = getNotefieldZoom(pn)
+			local scrx,scry = (screenWidth/2),(screenHeight/2)
+			setPropertyFromGroup('strumLineNotes', c, 'x', (getPropertyFromGroup('strumLineNotes',c,'x') - scrx)*wpos+scrx)
+			setPropertyFromGroup('strumLineNotes', c, 'y', (getPropertyFromGroup('strumLineNotes',c,'y') - scry)*wpos+scry)
 	local fov = 90
 	local tanHalfFOV = math.tan(math.rad(fov/2))
-		local updatex,updatey = getPropertyFromGroup('strumLineNotes',c,'x'),getPropertyFromGroup('strumLineNotes',c,'y')
 	local fakew = m.movew*m['movew'..col]*m.amovew*m['amovew'..col]
-			local origin={x=updatex - (screenWidth/2),y=updatey - (screenHeight/2),z=zp}
+			local origin={x=getPropertyFromGroup('strumLineNotes',c,'x') - (screenWidth/2),y=getPropertyFromGroup('strumLineNotes',c,'y') - (screenHeight/2),z=zp}
 			local pos={x=origin.x,y=origin.y,z=(origin.z)/1000-fakew}
 			local X = pos.x/(1/tanHalfFOV)/-pos.z+(screenWidth/2)
 			local Y = pos.y/(1/tanHalfFOV)/-pos.z+(screenHeight/2)
 			setPropertyFromGroup('strumLineNotes', c, 'x', X)
 			setPropertyFromGroup('strumLineNotes', c, 'y', Y)
-			setPropertyFromGroup('strumLineNotes', c, 'scale.x', scalex / -pos.z)
-			setPropertyFromGroup('strumLineNotes', c, 'scale.y', scaley / -pos.z)
+			setPropertyFromGroup('strumLineNotes', c, 'scale.x', scalex * wpos / -pos.z)
+			setPropertyFromGroup('strumLineNotes', c, 'scale.y', scaley * wpos / -pos.z)
 
     		local zoom = getZoom(0,col,pn)
 			setPropertyFromGroup("strumLineNotes",c,"scale.x",getPropertyFromGroup("strumLineNotes",c,"scale.x")*zoom)
@@ -2069,7 +2092,7 @@ function TEMPLATE.update(elapsed)
 			if m['incominganglex'..col] ~= 0 or m['incomingangley'..col] ~= 0 or m['incominganglez'..col] ~= 0 then
 				local vec = {
 					x = 0,
-					y = ypos,
+					y = alty,
 					z = 0
 				}
 				local rotatedpos = RotationXYZ(vec,m['incominganglex'..col],m['incomingangley'..col],m['incominganglez'..col])
@@ -2079,13 +2102,10 @@ function TEMPLATE.update(elapsed)
 			end
 			if m.rotatex ~= 0 or m.rotatey ~= 0 or m.rotatez ~= 0 then
 				local useX = altx
-				local useY =alty
+				local useY = alty
 				local originPos = {x=screenWidth/2,y=screenHeight/2}
 				if m.rotatetype == 1 then
 					originPos.x = defaultx
-				elseif m.rotatetype ~= 0 then
-					originPos.x = m.rotateoriginx
-					originPos.y = m.rotateoriginy
 				end
 				local vec = {
 					x = useX - originPos.x,
@@ -2155,6 +2175,10 @@ function TEMPLATE.update(elapsed)
 				setPropertyFromGroup('notes',v,'colorTransform.alphaMultiplier',alpha)
 
 
+				local wpos = getNotefieldZoom(pn)
+				local scrx,scry = (screenWidth/2),(screenHeight/2)
+				setPropertyFromGroup("notes",v,"x",(getPropertyFromGroup('notes',v,"x") - scrx)*wpos+scrx)
+				setPropertyFromGroup("notes",v,"y",(getPropertyFromGroup('notes',v,"y") - scry)*wpos+scry)
 	local fov = 90
 	local tanHalfFOV = math.tan(math.rad(fov/2))
 			local origin={x=getPropertyFromGroup('notes',v,"x") - (screenWidth/2),y= getPropertyFromGroup('notes',v,"y") - (screenHeight/2),z=za}
@@ -2164,7 +2188,7 @@ function TEMPLATE.update(elapsed)
 			local Y = pos.y/(1/tanHalfFOV)/-pos.z+(screenHeight/2)
 
 			local scalenewy=isSus and 1 or scaley
-			setPropertyFromGroup('notes', v, 'scale.x', scalex / -pos.z)
+			setPropertyFromGroup('notes', v, 'scale.x', scalex * wpos / -pos.z)
 			local yscale = 1
 			local susend = string.find(string.lower(getPropertyFromGroup('notes', v, 'animation.curAnim.name')), 'end') or string.find(string.lower(getPropertyFromGroup('notes', v, 'animation.curAnim.name')), 'tail')
 			if isSus then
@@ -2174,7 +2198,7 @@ function TEMPLATE.update(elapsed)
 					yscale = 1
 				end
 		    end
-			setPropertyFromGroup('notes', v, 'scale.y', scalenewy / -pos.z * yscale)
+			setPropertyFromGroup('notes', v, 'scale.y', scalenewy * wpos / -pos.z * yscale)
 			setPropertyFromGroup("notes",v,"scale.x",getPropertyFromGroup('notes',v,"scale.x")*zoom)
   			setPropertyFromGroup("notes",v,"scale.y",getPropertyFromGroup('notes',v,"scale.y")*zoom*(isSus and (1+m.longboy) or 1))
 			setPropertyFromGroup('notes', v, 'x', X+offx)
@@ -2421,16 +2445,12 @@ function initCommand()
 	local msg = mod_message
 	local mi = mod_insert
 
-end
-
-bTestMode = true -- debug
-
-function onCreate()
-	if bTestMode then setProperty('skipCountdown',true) end
+	set{0,1,'curve',1,'curveperiod'}
 end
 
 function updateCommand(elapsed,beat)
 end
+
 --end callbacks
 
 return 0
