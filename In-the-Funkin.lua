@@ -818,7 +818,7 @@ modList = {
 	mini = 0,
 	curve = 0,
 	curveoffset = 0,
-	curveperiod = 0,
+	curveperiod = 0
 }
 
 --column specific mods
@@ -854,22 +854,7 @@ for i=0,3 do
 	modList['xmod'..i] = 1 --column specific scrollSpeed multiplier
 end
 
-function setdefault(self)
-	for i = 1, #self, 2 do
-		modList[self[i + 1]] = self[i]
-	end
-end
-
- -- if you want to set default, write it here
-
 activeMods = {{},{}}
-
-for pn=1,2 do
-	for k,v in pairs(modList) do
-		activeMods[pn][k] = v
-	end
-end
-
 storedMods = {{},{}}
 targetMods = {{},{}}
 isTweening = {{},{}}
@@ -902,6 +887,9 @@ end
 
 function TEMPLATE.InitMods()
 	for pn=1,2 do
+	    for k,v in pairs(modList) do
+		    activeMods[pn][k] = v
+	    end
 		for k,v in pairs(activeMods[pn]) do
 			definemod{k,v}
 		end
@@ -1673,6 +1661,7 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 		zpos = zpos + math.abs(fastSin(((fYOffset + m.curveoffset) / (90
 		+ (m.curveperiod * 90))))) * ARROW_SIZE / 2;
 	end
+	
     return xpos, ypos, rotz, zpos
 
 end
@@ -1804,6 +1793,11 @@ function func(t)
 		table.insert(perframe,t)
 	else
 		table.insert(event,t)
+	end
+end
+function setdefault(self)
+	for i = 1, #self, 2 do
+		modList[self[i + 1]] = self[i]
 	end
 end
 
@@ -2239,11 +2233,12 @@ function onCreatePost()
     camNotes.y = game.camHUD.y;
 	setVar("camNotes",camNotes);
 ]])
+
+    initCommand()
 	TEMPLATE.InitMods()
 
 	--WRITE MODS HERE!
 
-	initCommand()
 
 	--must be called at END of start
 	TEMPLATE.setup()
@@ -2444,6 +2439,8 @@ function initCommand()
 	local m2 = func
 	local msg = mod_message
 	local mi = mod_insert
+	setdefault{1,"dizzy"}
+	
 end
 
 function updateCommand(elapsed,beat)
