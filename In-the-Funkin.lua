@@ -2,6 +2,16 @@
 
 TEMPLATE = {}
 
+extraOptions = {
+	testmode = false,
+	disable = false,
+	updateinsteps = false,
+	updateper = '1/16',
+	updateinterval = 16, -- another choice
+}
+
+systemOptions = extraOptions
+
 --[[
 			READ MEEEEEEEE!
 	The template is modified from TaroNuke's TEMPLATE 1,
@@ -818,7 +828,7 @@ modList = {
 	mini = 0,
 	curve = 0,
 	curveoffset = 0,
-	curveperiod = 0
+	curveperiod = 0,
 }
 
 --column specific mods
@@ -854,7 +864,16 @@ for i=0,3 do
 	modList['xmod'..i] = 1 --column specific scrollSpeed multiplier
 end
 
+function setdefault(self)
+	for i = 1, #self, 2 do
+		modList[self[i + 1]] = self[i]
+	end
+end
+
 activeMods = {{},{}}
+
+
+
 storedMods = {{},{}}
 targetMods = {{},{}}
 isTweening = {{},{}}
@@ -887,9 +906,11 @@ end
 
 function TEMPLATE.InitMods()
 	for pn=1,2 do
-	    for k,v in pairs(modList) do
-		    activeMods[pn][k] = v
-	    end
+	for k,v in pairs(modList) do
+		activeMods[pn][k] = v
+	end
+end
+	for pn=1,2 do
 		for k,v in pairs(activeMods[pn]) do
 			definemod{k,v}
 		end
@@ -1661,7 +1682,6 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 		zpos = zpos + math.abs(fastSin(((fYOffset + m.curveoffset) / (90
 		+ (m.curveperiod * 90))))) * ARROW_SIZE / 2;
 	end
-	
     return xpos, ypos, rotz, zpos
 
 end
@@ -1795,11 +1815,6 @@ function func(t)
 		table.insert(event,t)
 	end
 end
-function setdefault(self)
-	for i = 1, #self, 2 do
-		modList[self[i + 1]] = self[i]
-	end
-end
 
 function TEMPLATE.songStart()
 
@@ -1830,7 +1845,9 @@ end
 function TEMPLATE.update(elapsed)
 	beat = curDecBeat
 	setProperty('spawnTime',activeMods[1].drawsize * 2500)
-
+	if extraOptions.testmode == true then
+		luaDebugMode = true
+	end
 	--------------------------------------------------------------
 	-- modified version of exschwasion's template 1 ease reader
 	-- format changed to make it more mirin-like
@@ -1927,22 +1944,6 @@ function TEMPLATE.update(elapsed)
 	---------------------------------------
 	-- ACTUALLY APPLY THE RESULTS OF THE ABOVE CALCULATIONS TO THE NOTES
 	---------------------------------------
-
-	local camx, camy, camrotz, camalpha, camzoom, camzoomx, camzoomy, camskewx, camskewy = cameraEffects(1)
-	runHaxeCode([[
-		var cs:FlxCamera = getVar("camNotes");
-		cs.angle = ]]..camrotz..[[;
-		cs.alpha = ]]..camalpha..[[;
-		cs.zoom = game.camHUD.zoom + ]]..camzoom..[[;
-		cs.scaleX = ]]..camzoomx..[[;
-		cs.scaleY = ]]..camzoomy..[[;
-		cs.x = ]]..camx..[[;
-		cs.y = ]]..camy..[[;
-	]])
-
-	-- use matrix
-	setProperty('camNotes.canvas.__transform.c',camskewx)
-	setProperty('camNotes.canvas.__transform.b',camskewy)
 
 
 	if songStarted then
@@ -2213,46 +2214,86 @@ function TEMPLATE.update(elapsed)
 end
 
 function onCreatePost()
-	runHaxeCode([[
-    var camNotes:FlxCamera = new FlxCamera();
-    camNotes.height = game.camHUD.height;
-    camNotes.bgColor = 0x00000000;
+	if not extraOptions.disable then
+		runHaxeCode([[
+    	var camNotes:FlxCamera = new FlxCamera();
+    	camNotes.height = game.camHUD.height;
+    	camNotes.bgColor = 0x00000000;
 
-    FlxG.cameras.remove(game.camHUD, false);
-    FlxG.cameras.remove(game.camOther, false);
+    	FlxG.cameras.remove(game.camHUD, false);
+    	FlxG.cameras.remove(game.camOther, false);
 
-    FlxG.cameras.add(camNotes, false);
-    FlxG.cameras.add(game.camHUD, false);
-    FlxG.cameras.add(game.camOther, false);
+    	FlxG.cameras.add(camNotes, false);
+    	FlxG.cameras.add(game.camHUD, false);
+    	FlxG.cameras.add(game.camOther, false);
 
-    game.notes.cameras = [camNotes];
-    game.strumLineNotes.cameras = [camNotes];
-    camNotes.angle = game.camHUD.angle;
-    camNotes.zoom = game.camHUD.zoom;
-    camNotes.x = game.camHUD.x;
-    camNotes.y = game.camHUD.y;
-	setVar("camNotes",camNotes);
-]])
+    	game.notes.cameras = [camNotes];
+    	game.strumLineNotes.cameras = [camNotes];
+    	camNotes.angle = game.camHUD.angle;
+    	camNotes.zoom = game.camHUD.zoom;
+    	camNotes.x = game.camHUD.x;
+    	camNotes.y = game.camHUD.y;
+			setVar("camNotes",camNotes);
+		]])
+		initCommand()
+		TEMPLATE.InitMods()
 
-    initCommand()
-	TEMPLATE.InitMods()
-
-	--WRITE MODS HERE!
+		--WRITE MODS HERE!
 
 
-	--must be called at END of start
-	TEMPLATE.setup()
 
-  TEMPLATE.songStart()
+		--must be called at END of start
+		TEMPLATE.setup()
 
-	--for i=0,7,1 do
-	--	print('default position '..i..' = '..defaultPositions[i+1].x)
-	--end
+  	TEMPLATE.songStart()
+
+		--for i=0,7,1 do
+		--	print('default position '..i..' = '..defaultPositions[i+1].x)
+		--end
+
+		if extraOptions.testmode then
+			setProperty('skipCountdown',true)
+		end
+	end
 end
 
+function onStepHit()
+	if not extraOptions.disable then
+		if extraOptions.updateinsteps then
+			local per = 16 / extraOptions.updateinterval
+			local updateper = extraOptions.updateper
+			if updateper == '1/4' then per = 4
+			elseif updateper == '1/8' then per = 2
+			elseif updateper == '1/16' then per = 1
+			end
+			if curStep % per == 0 then
+				TEMPLATE.update(elapsed)
+			end
+		end
+	end
+end
 
 function onUpdatePost(elapsed)
-	TEMPLATE.update(elapsed)
+	if not extraOptions.disable then
+	local camx, camy, camrotz, camalpha, camzoom, camzoomx, camzoomy, camskewx, camskewy = cameraEffects(1)
+	runHaxeCode([[
+		var cs:FlxCamera = getVar("camNotes");
+		cs.angle = ]]..camrotz..[[;
+		cs.alpha = ]]..camalpha..[[;
+		cs.zoom = game.camHUD.zoom + ]]..camzoom..[[;
+		cs.scaleX = ]]..camzoomx..[[;
+		cs.scaleY = ]]..camzoomy..[[;
+		cs.x = ]]..camx..[[;
+		cs.y = ]]..camy..[[;
+	]])
+	-- use matrix
+	setProperty('camNotes.canvas.__transform.c',camskewx)
+	setProperty('camNotes.canvas.__transform.b',camskewy)
+
+		if not extraOptions.updateinsteps then
+			TEMPLATE.update(elapsed)
+		end
+	end
 end
 
 --callbacks
@@ -2417,19 +2458,23 @@ function initCommand()
 	local function modulo(a, b)
 		return a - math.floor(a / b) * b
 	end
-	local stringbuilder_mt =  {
-		__index = {
-			build = table.concat,
-			clear = iclear,
-		},
-		__call = function(self, a)
-			table.insert(self, tostring(a))
-			return self
-		end,
-		__tostring = table.concat,
+	local function swap(t)
+		local beat, len, curve, which = t[1], t[2], t[3], t[4]
+		t.width = t.width or 1
+		local s = {
+			normal = {0,0},
+			invert = {0,100},
+			flip = {100,0},
+			ludr = {25,-75},
+			drlu = {25,125},
+			rdul = {75,75},
+			ulrd = {75,-125},
+			urld = {100,-100},
 		}
-	local function stringbuilder()
-			return setmetatable({}, stringbuilder_mt)
+		ease {beat, len, curve,
+			(s[tostring(which)][1]*t.width) + (50 - t.width * 50), 'flip',
+			(s[tostring(which)][2]*t.width), 'invert'
+		, plr = t.plr}
 	end
 	--end mod plugins
 
@@ -2439,18 +2484,17 @@ function initCommand()
 	local m2 = func
 	local msg = mod_message
 	local mi = mod_insert
-	setdefault{1,"dizzy"}
-	
+	set{0,1,'tipsy',1,'drunk',1,'bumpy'}
 end
 
 function updateCommand(elapsed,beat)
-	luaDebugMode = true
 end
 
 function forEachCommand(id, column, isPlayer)
 
 end
-
+extraOptions.updateinsteps = true
+extraOptions.updateinterval = 8
 --end callbacks
 
 return 0
