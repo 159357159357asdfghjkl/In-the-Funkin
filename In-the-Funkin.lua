@@ -720,6 +720,12 @@ modList = {
 	tanpulseperiod = 0,
 	shrinkmult = 0,
 	shrinklinear = 0,
+	shrinkmultx = 0,
+	shrinklinearx = 0,
+	shrinkmulty = 0,
+	shrinklineary = 0,
+	shrinkmultz = 0,
+	shrinklinearz = 0,
 	movex = 0,
 	movey = 0,
 	movez = 0,
@@ -1224,7 +1230,7 @@ function getZoom(fYOffset, iCol, pn)
     local fZoom = 1
 	local fPulseInner = 1.0
 	if m.pulseinner ~= 0 or m.pulseouter ~= 0 or m.pulse ~= 0 then
-	local inner = m.pulseinner ~= 0 and m.pulse or m.pulseinner
+	local inner = m.pulseinner == 0 and m.pulse or m.pulseinner
 		fPulseInner = ((inner*0.5)+1)
 		if fPulseInner == 0 then
 			fPulseInner = 0.01
@@ -1232,20 +1238,20 @@ function getZoom(fYOffset, iCol, pn)
 	end
     if m.pulseinner ~= 0 or m.pulseouter ~= 0 or m.pulse ~= 0 then
     local sine = fastSin(((fYOffset+(100.0*m.pulseoffset))/(0.4*(ARROW_SIZE+(m.pulseperiod*ARROW_SIZE)))))
-    local outer = m.pulseouter ~= 0 and m.pulse or m.pulseouter
+    local outer = m.pulseouter == 0 and m.pulse or m.pulseouter
 		fZoom = fZoom*((sine*(outer*0.5))+fPulseInner)
 	end
 	
 	if m.tanpulseinner ~= 0 or m.tanpulseouter ~= 0 or m.tanpulse ~= 0 then
-	local inner = m.tanpulseinner ~= 0 and m.tanpulse or m.tanpulseinner
+	local inner = m.tanpulseinner == 0 and m.tanpulse or m.tanpulseinner
 		fPulseInner = ((inner*0.5)+1)
 		if fPulseInner == 0 then
 			fPulseInner = 0.01
 		end
 	end
     if m.tanpulseinner ~= 0 or m.tanpulseouter ~= 0 or m.tanpulse ~= 0 then
-    local sine = fastSin(((fYOffset+(100.0*m.tanpulseoffset))/(0.4*(ARROW_SIZE+(m.tanpulseperiod*ARROW_SIZE)))))
-    local outer = m.tanpulseouter ~= 0 and m.tanpulse or m.tanpulseouter
+    local sine = selectTanType(((fYOffset+(100.0*m.tanpulseoffset))/(0.4*(ARROW_SIZE+(m.tanpulseperiod*ARROW_SIZE)))),m.cosecant,m.secant,m.cotangent)
+    local outer = m.tanpulseouter == 0 and m.tanpulse or m.tanpulseouter
 		fZoom = fZoom*((sine*(outer*0.5))+fPulseInner)
 	end
 	
@@ -1290,6 +1296,25 @@ function getScale(fYOffset, iCol, pn, sx, sy, isNote, isHoldBody)
 	x = x * math.pow( 0.5, m.holdtiny ) * math.pow( 0.5, m['holdtiny'..iCol] )
 	x = x * math.pow( 0.5, -m.holdgirth ) * math.pow( 0.5, -m['holdgirth'..iCol] )
 	end
+	if m.shrinkmultx ~= 0 and fYOffset >= 0 then
+	x = x * (1/(1+(fYOffset*(m.shrinkmultx/100.0))))
+    end
+    if m.shrinklinearx ~= 0 and fYOffset >= 0 then
+    x = x + (fYOffset*(0.5*m.shrinklinearx/ARROW_SIZE))
+    end
+	if m.shrinkmulty ~= 0 and fYOffset >= 0 then
+	y = y * (1/(1+(fYOffset*(m.shrinkmulty/100.0))))
+    end
+    if m.shrinklineary ~= 0 and fYOffset >= 0 then
+    y = y + (fYOffset*(0.5*m.shrinklineary/ARROW_SIZE))
+    end
+	if m.shrinkmultz ~= 0 and fYOffset >= 0 then
+	z = z * (1/(1+(fYOffset*(m.shrinkmultz/100.0))))
+    end
+    if m.shrinklinearz ~= 0 and fYOffset >= 0 then
+    z = z + (fYOffset*(0.5*m.shrinklinearz/ARROW_SIZE))
+    end
+
 	x = x*m.zoomx*m.zoom
 	y = y*m.zoomy*m.zoom
 	z = z*m.zoomz*m.zoom
@@ -2782,8 +2807,7 @@ function initCommand()
 	local m2 = func
 	local msg = mod_message
 	local mi = mod_insert
-	--set{0,1,"spiralx",1,"spiraly",-.95,"spiralxperiod",-.95,"spiralyperiod",1,"centered",0.8,"xmod"}
-	set{0,1,"orient",1,"drunk"}
+
 end
 
 function updateCommand(elapsed,beat)
