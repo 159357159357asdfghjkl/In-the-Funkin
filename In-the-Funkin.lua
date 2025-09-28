@@ -760,7 +760,7 @@ modList = {
 	camx = 0,
 	camy = 0,
 	camalpha = 1,
-	camzoom = 1,
+	camzoom = 0,
 	camangle = 0,
 	camwag = 0,
 	xmod = 1, --scrollSpeed
@@ -1241,7 +1241,7 @@ function getZoom(fYOffset, iCol, pn)
     local outer = m.pulseouter == 0 and m.pulse or m.pulseouter
 		fZoom = fZoom*((sine*(outer*0.5))+fPulseInner)
 	end
-	
+
 	if m.tanpulseinner ~= 0 or m.tanpulseouter ~= 0 or m.tanpulse ~= 0 then
 	local inner = m.tanpulseinner == 0 and m.tanpulse or m.tanpulseinner
 		fPulseInner = ((inner*0.5)+1)
@@ -1254,7 +1254,7 @@ function getZoom(fYOffset, iCol, pn)
     local outer = m.tanpulseouter == 0 and m.tanpulse or m.tanpulseouter
 		fZoom = fZoom*((sine*(outer*0.5))+fPulseInner)
 	end
-	
+
 	if m.shrinkmult ~= 0 and fYOffset >= 0 then
 	fZoom = fZoom * (1/(1+(fYOffset*(m.shrinkmult/100.0))))
     end
@@ -1318,7 +1318,7 @@ function getScale(fYOffset, iCol, pn, sx, sy, isNote, isHoldBody)
 	x = x*m.zoomx*m.zoom
 	y = y*m.zoomy*m.zoom
 	z = z*m.zoomz*m.zoom
-	
+
 	x = x * squishX
 	x = x * stretchX
 
@@ -1329,7 +1329,7 @@ end
 
 function cameraEffects(pn)
     local m = activeMods[pn]
-	local xpos, ypos, rotz, alpha, zoom, zoomx, zoomy, skewx, skewy = 0, 0, 0, 1, 1, 1, 1, 0, 0
+	local xpos, ypos, rotz, alpha, zoom, zoomx, zoomy, skewx, skewy = 0, 0, 0, 1, 0, 1, 1, 0, 0
 	xpos = xpos + activeMods[1].camx
 	ypos = ypos + activeMods[1].camy
 	rotz = rotz + activeMods[1].camangle + activeMods[1].camwag * fastSin(beat*math.pi)
@@ -1398,19 +1398,19 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
     end
 
 	if m['movex'..iCol] ~= 0 or m.movex ~= 0 then
-		xpos = xpos + m['movex'..iCol] * 112 + m.movex * 112
+		xpos = xpos + m['movex'..iCol] * ARROW_SIZE + m.movex * ARROW_SIZE
 	end
 	if m['amovex'..iCol] ~= 0 or m.amovex ~= 0 then
 		xpos = xpos + m['amovex'..iCol] + m.amovex
 	end
 	if m['movey'..iCol] ~= 0 or m.movey ~= 0 then
-		ypos = ypos + m['movey'..iCol]*112 + m.movey*112
+		ypos = ypos + m['movey'..iCol] * ARROW_SIZE + m.movey * ARROW_SIZE
 	end
 	if m['amovey'..iCol] ~= 0 or m.amovey ~= 0 then
 		ypos = ypos + m['amovey'..iCol] + m.amovey
 	end
 	if m['movez'..iCol] ~= 0 or m.movez ~= 0 then
-	    zpos = zpos + m['movez'..iCol] + m.movez
+	    zpos = zpos + m['movez'..iCol] * ARROW_SIZE + m.movez * ARROW_SIZE
 	end
 	if m['amovez'..iCol] ~= 0 or m.amovez ~= 0 then
 		zpos = zpos + m['amovez'..iCol] + m.amovez
@@ -1650,18 +1650,18 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 		end
 	end
     if m.cubicx ~= 0 then
-        xpos = xpos +ARROW_SIZE/2*math.pow((fYOffset+m.cubicxoffset)/screenHeight*2,4)*m.cubicx
+        xpos = xpos +math.pow((fYOffset+2*m.cubicxoffset)/ARROW_SIZE,3)*2*m.cubicx
     end
     if m.cubicy ~= 0 then
-        ypos = ypos + ARROW_SIZE/2*math.pow((fYOffset+m.cubicyoffset)/screenHeight*2,4)*m.cubicy
+        ypos = ypos + math.pow((fYOffset+2*m.cubicyoffset)/ARROW_SIZE,3)*2*m.cubicy
     end
     if m.cubicz ~= 0 then
-        zpos = zpos + ARROW_SIZE/2*math.pow((fYOffset+m.cubiczoffset)/screenHeight*2,4)*m.cubicz
+        zpos = zpos +math.pow((fYOffset+2*m.cubiczoffset)/ARROW_SIZE,3)*2*m.cubicz
     end
     if m.asymptote ~= 0 then
-    local receptorx = fXOffset[iCol+1]*(1+m.asymptote*100)
+    local receptorx = fXOffset[iCol+1]*(1+m.asymptote*1000)
         local eff = (receptorx-fXOffset[iCol+1])*(math.exp(-math.abs(fYOffset+m.asymptoteoffset*100)*(1+m.asymptotescale)))
-        xpos=xpos+eff*m.asymptote
+        xpos=xpos+eff
     end
 	if m.sawtooth ~= 0 then
 		xpos = xpos + (m.sawtooth*ARROW_SIZE) * ((0.5 / (m.sawtoothperiod+1) * (fYOffset + 100*m.sawtoothoffset)) / ARROW_SIZE - math.floor((0.5 / (m.sawtoothperiod+1) * (fYOffset + 100*m.sawtoothoffset)) / ARROW_SIZE) );
@@ -2333,7 +2333,7 @@ function TEMPLATE.update(elapsed)
 			local useX = altx
 			local useY = alty
 			local originPos = {x=0,y=screenHeight/2}
-			
+
 			local vec = {
 				x = useX - originPos.x,
 				y = useY - originPos.y,
@@ -2445,7 +2445,7 @@ function TEMPLATE.update(elapsed)
 				local useY = alty
 				local originPos = {x=screenWidth/2-ARROW_SIZE/2,y=screenHeight/2}
 				local xs = {-ARROW_SIZE * 1.5,-ARROW_SIZE/2,ARROW_SIZE/2,ARROW_SIZE*1.5}
-				
+
 				local vec = {
 					x = useX - originPos.x,
 					y = useY - originPos.y,
@@ -2495,7 +2495,7 @@ function TEMPLATE.update(elapsed)
 				setPropertyFromGroup('notes',v,'colorTransform.alphaMultiplier',alpha)
 
 				forEachCommand(getPropertyFromGroup('notes',v,'ID'),col,getPropertyFromGroup('notes',v,"mustPress"))
-				
+
 	local fov = 90
 	local tanHalfFOV = math.tan(math.rad(fov/2))
 			local origin={x=getPropertyFromGroup('notes',v,"x"),y= getPropertyFromGroup('notes',v,"y") - (screenHeight/2),z=za}
@@ -2807,7 +2807,7 @@ function initCommand()
 	local m2 = func
 	local msg = mod_message
 	local mi = mod_insert
-
+	set{0,1,'asymptote'}
 end
 
 function updateCommand(elapsed,beat)
