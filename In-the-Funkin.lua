@@ -1420,8 +1420,7 @@ function arrowEffects(fYOffset, iCol, pn, withreverse)
 	if m['reverse'..iCol] ~= 0 or m.reverse ~= 0 or m.split ~= 0 or m.cross ~= 0 or m.alternate ~= 0 then
 		local shift = getReverseForCol(iCol,pn) * 520
 		shift = scale(m.centered, 0., 1., shift, 520 / 2)
-		shift = scale(m.centered2, 0., 1., shift, ARROW_SIZE)
-		ypos = ypos + shift - m.centered2 * ARROW_SIZE
+		ypos = ypos + shift
 	end
 	end
 	if m.flip ~= 0 then
@@ -2820,3 +2819,4 @@ end
 --end callbacks
 
 return 0
+
